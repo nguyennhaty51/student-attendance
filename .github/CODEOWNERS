@@ -1,0 +1,8 @@
+# Thay @username bằng tên GitHub thật của từng người.
+# Ai là chủ thư mục nào thì tự động được yêu cầu duyệt khi file đó đổi.
+/app/models/            @TV1-username
+/migrations/            @TV1-username
+/config.py              @TV1-username
+/Dockerfile             @TV1-username
+/app/templates/base.html @TV1-username
+/app/static/css/        @TV1-username
