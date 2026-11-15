@@ -1,0 +1,63 @@
+{# 1. Macro nhãn trạng thái màu #}
+{% macro status_badge(status) %}
+  {% set map = {
+    'present': ('Có mặt', 'bg-success'),
+    'absent': ('Vắng', 'bg-danger'),
+    'late': ('Muộn', 'bg-warning text-dark'),
+    'excused': ('Có phép', 'bg-primary'),
+    'pending': ('Chờ duyệt', 'bg-warning text-dark'),
+    'approved': ('Đã duyệt', 'bg-success'),
+    'rejected': ('Từ chối', 'bg-danger')
+  } %}
+  {% set label, badge_class = map.get(status, (status, 'bg-secondary')) %}
+  <span class="badge {{ badge_class }}">{{ label }}</span>
+{% endmacro %}
+
+{# 2. Macro phân trang Bootstrap #}
+{% macro render_pagination(pagination, endpoint) %}
+  {% if pagination and pagination.pages > 1 %}
+  <nav aria-label="Page navigation">
+    <ul class="pagination justify-content-center">
+      <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
+        <a class="page-link" href="{{ url_for(endpoint, page=pagination.prev_num, **kwargs) if pagination.has_prev else '#' }}">&laquo;</a>
+      </li>
+      {% for p in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+        {% if p %}
+          <li class="page-item {% if p == pagination.page %}active{% endif %}">
+            <a class="page-link" href="{{ url_for(endpoint, page=p, **kwargs) }}">{{ p }}</a>
+          </li>
+        {% else %}
+          <li class="page-item disabled"><span class="page-link">...</span></li>
+        {% endif %}
+      {% endfor %}
+      <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
+        <a class="page-link" href="{{ url_for(endpoint, page=pagination.next_num, **kwargs) if pagination.has_next else '#' }}">&raquo;</a>
+      </li>
+    </ul>
+  </nav>
+  {% endif %}
+{% endmacro %}
+
+{# 3. Macro hộp thoại xác nhận (Modal Bootstrap) #}
+{% macro confirm_modal(modal_id, title, message, action_url, btn_text='Xác nhận', btn_class='btn-danger') %}
+<div class="modal fade" id="{{ modal_id }}" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="POST" action="{{ action_url }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="modal-header">
+          <h5 class="modal-title">{{ title }}</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p class="mb-0">{{ message }}</p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+          <button type="submit" class="btn {{ btn_class }}">{{ btn_text }}</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endmacro %}
