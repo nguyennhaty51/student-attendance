@@ -3,8 +3,7 @@ from sqlalchemy import event
 from sqlalchemy.engine import Engine
 
 from config import Config
-
-from .extensions import db, migrate
+from .extensions import db, migrate, login_manager, csrf, bcrypt
 
 
 @event.listens_for(Engine, "connect")
@@ -21,11 +20,15 @@ def create_app(config_class=Config):
     app.config.from_object(config_class)
 
     db.init_app(app)
-    # render_as_batch=True để Alembic sửa bảng được trên SQLite
     migrate.init_app(app, db, render_as_batch=True)
+    login_manager.init_app(app)
+    csrf.init_app(app)
+    bcrypt.init_app(app)
 
-    from . import models  # noqa: F401  (đăng ký model cho Flask-Migrate)
+    from . import models  # noqa: F401
     from app.routes import main_bp
+    from app.routes.auth import auth_bp
 
     app.register_blueprint(main_bp)
+    app.register_blueprint(auth_bp)
     return app

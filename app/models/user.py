@@ -4,12 +4,13 @@ Kế thừa: `users` chứa trường chung + cột `role`; `students` và `lect
 khóa chính `user_id` (cũng là khóa ngoại tới users.id). Admin dùng chung bảng `users`.
 """
 import bcrypt
+from flask_login import UserMixin
 
-from app.extensions import db
+from app.extensions import db, login_manager
 from .enums import Role, enum_col
 
 
-class User(db.Model):
+class User(UserMixin, db.Model):
     """Lớp trừu tượng: không tạo trực tiếp, chỉ tạo Student / Lecturer / Admin."""
 
     __tablename__ = "users"
@@ -46,14 +47,17 @@ class User(db.Model):
 
     # ----- phương thức trong sơ đồ: login(), logout(), changePassword() -----
     def login(self, password: str) -> bool:
-        """Đúng mật khẩu và tài khoản chưa bị khóa. Việc tạo phiên đăng nhập do AuthService (TV2) làm."""
+        """Đúng mật khẩu và tài khoản chưa bị khóa. Việc tạo phiên đăng nhập do AuthService làm."""
         return bool(self.is_active and self.check_password(password))
 
     def logout(self) -> None:
-        raise NotImplementedError("TODO TV2: AuthService.logout")
+        from app.services.auth_service import AuthService
+        AuthService.logout()
 
     def change_password(self, old_password: str, new_password: str) -> bool:
-        raise NotImplementedError("TODO TV2: AuthService.change_password")
+        from app.services.auth_service import AuthService
+        ok, _ = AuthService.change_password(self, old_password, new_password)
+        return ok
 
     def __repr__(self):
         return f"<{type(self).__name__} {self.username}>"
@@ -147,3 +151,8 @@ class Admin(User):
     def view_report(self, **filters):
         """UC9 (toàn hệ thống)."""
         raise NotImplementedError("TODO TV3: ReportService.generate")
+
+
+@login_manager.user_loader
+def load_user(user_id):
+    return db.session.get(User, int(user_id))
