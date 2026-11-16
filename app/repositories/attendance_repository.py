@@ -1,6 +1,6 @@
 from sqlalchemy import func, select
 
-from app.extensions import db
+from app.extensions  import db
 from app.models import (
     Attendance,
     AttendanceStatus,
