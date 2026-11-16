@@ -13,5 +13,5 @@ def client():
 
 def test_index_page_loads(client):
     response = client.get("/")
-    assert response.status_code == 200
-    assert b"Student Attendance System" in response.data
+    assert response.status_code == 302
+    assert "/login" in response.location

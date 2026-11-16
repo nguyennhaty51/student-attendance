@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Đăng nhập - Hệ thống Điểm danh{% endblock %}
+{% block content %}
+<div class="row justify-content-center mt-5">
+  <div class="col-11 col-sm-8 col-md-5 col-lg-4">
+    <div class="card shadow-sm">
+      <div class="card-body p-4">
+        <h4 class="text-center mb-4 fw-bold text-primary">ĐĂNG NHẬP</h4>
+          <form method="POST" action="{{ url_for('auth.login', next=request.args.get('next')) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div class="mb-3">
+            <label class="form-label">Tên đăng nhập</label>
+            <input type="text" name="username" class="form-control" required autofocus>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Mật khẩu</label>
+            <input type="password" name="password" class="form-control" required>
+          </div>
+          <button type="submit" class="btn btn-primary w-100">Đăng nhập</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
