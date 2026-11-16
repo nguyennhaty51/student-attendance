@@ -6,7 +6,7 @@
     <div class="card shadow-sm">
       <div class="card-body p-4">
         <h4 class="text-center mb-4 fw-bold text-primary">ĐĂNG NHẬP</h4>
-        <form method="POST" action="{{ url_for('auth.login') }}">
+          <form method="POST" action="{{ url_for('auth.login', next=request.args.get('next')) }}">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <div class="mb-3">
             <label class="form-label">Tên đăng nhập</label>

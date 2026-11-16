@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, render_template
 from sqlalchemy import event
 from sqlalchemy.engine import Engine
 
@@ -31,4 +31,10 @@ def create_app(config_class=Config):
 
     app.register_blueprint(main_bp)
     app.register_blueprint(auth_bp)
+
+    @app.errorhandler(403)
+    def forbidden(_error):
+        """Sai vai trò (role_required) → trang 403."""
+        return render_template("errors/403.html"), 403
+
     return app
