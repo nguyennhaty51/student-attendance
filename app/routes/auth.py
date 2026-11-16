@@ -1,3 +1,5 @@
+from urllib.parse import urlparse
+
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_required, current_user
 from app.models.enums import Role
@@ -14,6 +16,14 @@ def _home_by_role(role) -> str:
     return "/student/home"           # M03 Student Home
 
 
+def _safe_next(target) -> bool:
+    """Chỉ chấp nhận đường dẫn nội bộ (tránh chuyển hướng ra trang ngoài)."""
+    if not target or not target.startswith("/") or target.startswith("//"):
+        return False
+    parsed = urlparse(target)
+    return not parsed.scheme and not parsed.netloc and "\\" not in target
+
+
 @auth_bp.route("/login", methods=["GET", "POST"])
 def login():
     if current_user.is_authenticated:
@@ -26,7 +36,8 @@ def login():
         if error:
             flash(error, "danger")
             return render_template("auth/login.html")
-        return redirect(_home_by_role(user.role))
+        next_url = request.args.get("next")
+        return redirect(next_url if _safe_next(next_url) else _home_by_role(user.role))
 
     return render_template("auth/login.html")
 

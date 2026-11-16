@@ -6,11 +6,15 @@
 
 ```
 app/
-  __init__.py        create_app, bật khóa ngoại cho SQLite
-  config.py          cấu hình (DATABASE_URL, ngưỡng vắng 20%, PIN 6 số / 5 phút)
-  extensions.py      db, migrate
+  __init__.py        create_app, bật khóa ngoại cho SQLite, trang 403
+  extensions.py      db, migrate, login_manager, csrf
   errors.py          ServiceError + mã lỗi dùng chung
   models/            lớp đối tượng + ánh xạ bảng (enums, user, academic, attendance, misc)
+  routes/            controller (auth.py: đăng nhập, đăng xuất, đổi mật khẩu)
+  services/          nghiệp vụ (auth_service.py)
+  utils/decorators.py   role_required(...)
+  templates/         base.html, macros.html, auth/, errors/
+config.py            cấu hình ở thư mục gốc (DATABASE_URL, ngưỡng vắng 20%, PIN 6 số / 5 phút)
 scripts/
   seed.py            nạp dữ liệu mẫu (chạy lại được nhiều lần)
   seed_data.py       dữ liệu mẫu thuần Python
@@ -18,14 +22,13 @@ scripts/
 docs/api_contract.md hợp đồng frontend–backend (M01–M15, chữ ký service, mã lỗi)
 wsgi.py              điểm vào cho `flask --app wsgi`
 ```
-
 ## Cài đặt và chạy
 
 ```bash
-python -m venv .venv && source .venv/bin/activate     # Windows: .venv\Scripts\activate
+python -m venv .venv && source .venv/bin/activate     # Windows: .venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 
-# SQLite (mặc định, file instance/attendance.db)
+# SQLite (mặc định, file instance/attendance.sqlite3)
 flask --app wsgi db upgrade
 python scripts/seed.py
 python scripts/check_constraints.py        # mọi dòng phải là "OK    bị từ chối"
@@ -121,12 +124,69 @@ Dữ liệu mẫu: 3 môn (INT1001, INT1002, INT1003), 4 lớp học phần họ
 - Làm trên nhánh tách từ `develop`, mở Pull Request vào `develop`; mỗi nhóm việc nhỏ một PR (`feature/t1-models`, `feature/t1-migrations`, `feature/t1-seed`, `docs/api-contract`). PR cuối của Issue ghi `Closes #<số Issue>`.
 - Chỉ sửa file thuộc phần của mình; cần đổi file dùng chung (`app/models/*`, `app/errors.py`, `docs/api_contract.md`) thì báo TV1 / mở PR cho TV1.
 - Kiểm thử làm sau khi hoàn thành chức năng, theo Testing Document Template của thầy.
-## Hướng dẫn sử dụng Layout chung & Bảo mật CSRF (Dành cho TV4, TV5)
-1. **Kế thừa layout chuẩn** ở đầu mỗi file HTML:
-   ```jinja2
-   {% extends "base.html" %}
-   {% from "macros.html" import status_badge, render_pagination, confirm_modal %}
-   {% block title %}Tên trang{% endblock %}
-   {% block content %}
-     <!-- Nội dung trang -->
-   {% endblock %}
+## Dùng layout chung (TV4, TV5)
+
+Mọi trang con kế thừa `app/templates/base.html` (thanh trên: tên hệ thống, tên người dùng, đổi mật khẩu, đăng xuất; menu trái theo vai trò đúng Mục 7.2; vùng thông báo; Bootstrap 5 co giãn theo màn hình). **Không sửa `base.html`**; cần đổi thì báo TV1.
+
+```jinja
+{% extends "base.html" %}
+{% from "macros.html" import status_badge, render_pagination, confirm_modal %}
+
+{% block title %}Lịch sử điểm danh{% endblock %}
+{% block extra_css %}{% endblock %}          {# tùy chọn #}
+{% block content %}
+  <h4>Lịch sử điểm danh</h4>
+  ... nội dung trang ...
+{% endblock %}
+{% block extra_js %}{% endblock %}           {# tùy chọn #}
+```
+
+| Block | Dùng cho |
+|---|---|
+| `title` | Tiêu đề thẻ trình duyệt |
+| `content` | Nội dung chính (bên phải menu) |
+| `extra_css`, `extra_js` | CSS/JS riêng của trang (JS nạp sau Bootstrap) |
+
+**Thông báo:** trong route gọi `flash("Nội dung", "success")`; loại: `success` (xanh lá), `danger` (đỏ), `warning` (vàng), `info` (xanh dương). `base.html` tự hiển thị.
+
+**Macro** (`app/templates/macros.html`):
+
+| Macro | Cách dùng |
+|---|---|
+| `status_badge(status)` | `{{ status_badge(row.status) }}`; nhận enum hoặc chuỗi (`PRESENT`/`present`...). Có mặt xanh lá, Vắng đỏ, Muộn vàng, Có phép xanh dương; Chờ duyệt vàng, Đã duyệt xanh lá, Từ chối đỏ |
+| `render_pagination(pagination, endpoint, **bộ_lọc)` | `{{ render_pagination(p, 'admin.users', q=q) }}`; `p` là kết quả `query.paginate(page=..., per_page=20)` |
+| `confirm_modal(id, tiêu_đề, nội_dung, action_url, btn_text, btn_class)` | Định nghĩa modal rồi mở bằng nút `data-bs-toggle="modal" data-bs-target="#id"`; modal tự có `csrf_token` |
+
+Hàng vượt ngưỡng vắng: thêm class `row-over-threshold` vào `<tr>` (tô đỏ, Mục 7.2).
+
+Menu trái trỏ tới các đường dẫn trong `docs/api_contract.md`; route nào chưa làm thì bấm vào ra 404 cho đến khi TV tương ứng thêm.
+
+## Phân quyền và CSRF
+
+**Phân quyền:** gắn `role_required` cho **mọi** route (ngoài `/login`):
+
+```python
+from app.models.enums import Role
+from app.utils.decorators import role_required
+
+@bp.route("/lecturer/classes")
+@role_required(Role.LECTURER)
+def my_classes(): ...
+```
+
+Chưa đăng nhập → chuyển tới `/login?next=<trang>` (đăng nhập xong quay lại trang đó). Sai vai trò → HTTP 403 (trang `errors/403.html`). Một route cho nhiều vai trò: `@role_required(Role.LECTURER, Role.ADMIN)`. Lấy người dùng hiện tại bằng `current_user` (Flask-Login).
+
+**CSRF (Flask-WTF, bật cho mọi POST):**
+- Mọi `<form method="POST">` phải có dòng này, nếu thiếu server trả 400:
+  ```html
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  ```
+- Gọi POST bằng JavaScript (fetch/AJAX): lấy token một lần rồi gửi trong header `X-CSRFToken`:
+  ```html
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  ```
+  ```js
+  fetch(url, {method: "POST", headers: {"X-CSRFToken": document.querySelector('meta[name=csrf-token]').content}});
+  ```
+- Đăng xuất là POST (nút trong `base.html` đã có token).
+- Trong test, tắt CSRF bằng `WTF_CSRF_ENABLED = False` (xem `tests/test_auth.py`).
