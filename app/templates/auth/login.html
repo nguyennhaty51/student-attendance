@@ -1,25 +1,100 @@
 {% extends "base.html" %}
 {% block title %}Đăng nhập - Hệ thống Điểm danh{% endblock %}
+
+{% block extra_css %}
+<style>
+  /* Ẩn khung flash mặc định ở trên cùng để hiển thị lỗi ngay dưới ô nhập theo wireframe M01 */
+  main > .alert {
+    display: none;
+  }
+  .login-card {
+    background-color: #f3f4f6;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+  }
+  .btn-login-custom {
+    background-color: #1d63b8;
+    border-color: #1d63b8;
+    min-width: 180px;
+  }
+  .btn-login-custom:hover {
+    background-color: #164e96;
+    border-color: #164e96;
+  }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="row justify-content-center mt-5">
-  <div class="col-11 col-sm-8 col-md-5 col-lg-4">
-    <div class="card shadow-sm">
-      <div class="card-body p-4">
-        <h4 class="text-center mb-4 fw-bold text-primary">ĐĂNG NHẬP</h4>
-          <form method="POST" action="{{ url_for('auth.login', next=request.args.get('next')) }}">
+<div class="row justify-content-center align-items-center" style="min-height: 72vh;">
+  <div class="col-12 col-sm-10 col-md-7 col-lg-5">
+    <div class="card login-card shadow-sm">
+      <div class="card-body p-4 p-md-5">
+        <h4 class="text-center mb-4 fw-bold text-dark">ĐĂNG NHẬP</h4>
+
+        <form id="loginForm" method="POST" action="{{ url_for('auth.login', next=request.args.get('next')) }}" novalidate>
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
           <div class="mb-3">
-            <label class="form-label">Tên đăng nhập</label>
-            <input type="text" name="username" class="form-control" required autofocus>
+            <label for="username" class="form-label fw-medium">Tên đăng nhập</label>
+            <input type="text" id="username" name="username" class="form-control bg-white" required autofocus>
+            <div id="usernameError" class="text-danger small mt-1 d-none">Vui lòng nhập tên đăng nhập.</div>
           </div>
+
           <div class="mb-3">
-            <label class="form-label">Mật khẩu</label>
-            <input type="password" name="password" class="form-control" required>
+            <label for="password" class="form-label fw-medium">Mật khẩu</label>
+            <input type="password" id="password" name="password" class="form-control bg-white" required>
+            <div id="passwordError" class="text-danger small mt-1 d-none">Vui lòng nhập mật khẩu.</div>
+
+            {# Hiển thị lỗi từ server (sai tên đăng nhập hoặc mật khẩu) ngay dưới ô nhập #}
+            {% with messages = get_flashed_messages(with_categories=true) %}
+              {% for category, message in messages %}
+                {% if category == 'danger' %}
+                  <div class="text-danger small mt-2">{{ message }}</div>
+                {% endif %}
+              {% endfor %}
+            {% endwith %}
           </div>
-          <button type="submit" class="btn btn-primary w-100">Đăng nhập</button>
+
+          <div class="text-center mt-4 pt-2">
+            <button type="submit" class="btn btn-primary btn-login-custom py-2 px-4 fw-medium">Đăng nhập</button>
+          </div>
         </form>
       </div>
     </div>
   </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  document.getElementById('loginForm').addEventListener('submit', function (e) {
+    let isValid = true;
+    const usernameInput = document.getElementById('username');
+    const passwordInput = document.getElementById('password');
+    const usernameError = document.getElementById('usernameError');
+    const passwordError = document.getElementById('passwordError');
+
+    if (!usernameInput.value.trim()) {
+      usernameError.classList.remove('d-none');
+      usernameInput.classList.add('is-invalid');
+      isValid = false;
+    } else {
+      usernameError.classList.add('d-none');
+      usernameInput.classList.remove('is-invalid');
+    }
+
+    if (!passwordInput.value) {
+      passwordError.classList.remove('d-none');
+      passwordInput.classList.add('is-invalid');
+      isValid = false;
+    } else {
+      passwordError.classList.add('d-none');
+      passwordInput.classList.remove('is-invalid');
+    }
+
+    if (!isValid) {
+      e.preventDefault();
+    }
+  });
+</script>
 {% endblock %}
