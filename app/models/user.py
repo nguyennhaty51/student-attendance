@@ -1,8 +1,3 @@
-"""User (trừu tượng), Student, Lecturer, Admin – Hình 5.1; bảng users, students, lecturers – Hình 6.1.
-
-Kế thừa: `users` chứa trường chung + cột `role`; `students` và `lecturers` là bảng riêng với
-khóa chính `user_id` (cũng là khóa ngoại tới users.id). Admin dùng chung bảng `users`.
-"""
 import bcrypt
 from flask_login import UserMixin
 
@@ -110,17 +105,24 @@ class Lecturer(User):
         """UC16."""
         raise NotImplementedError("TODO TV3: ClassService.teaching_classes")
 
+    def get_attendance_sheet(self, session_id: int) -> dict:
+        """UC5 – lấy danh sách điểm danh của buổi học."""
+        from app.services.attendance_service import AttendanceService
+        return AttendanceService.get_attendance_sheet(self.id, session_id)
+    
     def take_attendance(self, session_id: int, records: dict):
         """UC5. records: {student_id: (AttendanceStatus, note)}."""
-        raise NotImplementedError("TODO TV2: AttendanceService.take_attendance")
-
+        from app.services.attendance_service import AttendanceService
+        return AttendanceService.take_attendance(self.id, session_id, records)
+    
     def open_check_in_session(self, session_id: int, minutes: int = 5):
         """UC6."""
         raise NotImplementedError("TODO TV2: AttendanceService.open_check_in_session")
 
     def edit_attendance(self, attendance_id: int, new_status, reason: str):
         """UC7 – ghi AttendanceLog (BR6)."""
-        raise NotImplementedError("TODO TV2: AttendanceService.edit_attendance")
+        from app.services.attendance_service import AttendanceService
+        return AttendanceService.edit_attendance(self.id, attendance_id, new_status, reason)
 
     def review_leave(self, leave_id: int, approve: bool):
         """UC8."""
