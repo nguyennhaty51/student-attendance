@@ -28,9 +28,11 @@ def create_app(config_class=Config):
     from . import models  # noqa: F401
     from app.routes import main_bp
     from app.routes.auth import auth_bp
+    from app.routes.lecturer_attendance import attendance_bp
 
     app.register_blueprint(main_bp)
     app.register_blueprint(auth_bp)
+    app.register_blueprint(attendance_bp)
 
     @app.errorhandler(403)
     def forbidden(_error):
