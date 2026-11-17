@@ -1,0 +1,236 @@
+{% extends "base.html" %}
+{% block title %}Gửi đơn xin nghỉ - Hệ thống Điểm danh{% endblock %}
+
+{% block extra_css %}
+<style>
+  .select-square-m06 {
+    border-radius: 2px;
+    border: 1px solid #9ca3af;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://w3.org' width='8' height='8' viewBox='0 0 8 8'%3E%3Cpath fill='%234b5563' d='M1 2.5l3 3 3-3z'/%3E%3C/svg%3E");
+    background-size: 8px 8px;
+    background-position: right 12px center;
+  }
+  .textarea-square-m06 {
+    border-radius: 2px;
+    border: 1px solid #9ca3af;
+    resize: none;
+    padding: 32px 14px;
+    line-height: 1.5;
+  }
+  .table-custom {
+    border-color: #cbd5e1;
+  }
+  .table-custom th {
+    background-color: #e5e7eb;
+    color: #1f2937;
+    font-weight: 700;
+    border-bottom: 1px solid #cbd5e1;
+    padding: 10px 14px;
+  }
+  .table-custom td {
+    padding: 10px 14px;
+  }
+  .btn-submit-m06 {
+    background-color: #2b6cb0;
+    border-color: #2b6cb0;
+    color: #ffffff;
+    font-weight: 600;
+    min-width: 165px;
+    border-radius: 6px;
+  }
+  .btn-submit-m06:hover {
+    background-color: #235891;
+    border-color: #235891;
+    color: #ffffff;
+  }
+  .status-pill {
+    display: inline-block;
+    min-width: 104px;
+    padding: 5px 14px;
+    border-radius: 999px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-align: center;
+  }
+  .pill-approved { background-color: #2e8540; color: #ffffff; }
+  .pill-pending { background-color: #e59400; color: #ffffff; }
+  .pill-rejected { background-color: #d62828; color: #ffffff; }
+</style>
+{% endblock %}
+
+{% block content %}
+{% set mock_upcoming = [
+  {"session_id": 301, "label": "INT1234 – 03/11/2026 07:30"},
+  {"session_id": 302, "label": "INT2201 – 05/11/2026 13:00"}
+] %}
+{% set mock_requests = [
+  {
+    "id": 1,
+    "session_id": 101,
+    "session_label": "INT1234 – 27/10",
+    "reason": "Bị ốm",
+    "created_at": "26/10/2026",
+    "status": "APPROVED"
+  },
+  {
+    "id": 2,
+    "session_id": 302,
+    "session_label": "INT2201 – 05/11/2026 13:00",
+    "reason": "Việc gia đình",
+    "created_at": "28/10/2026",
+    "status": "PENDING"
+  }
+] %}
+
+{% set sessions_list = upcoming_sessions if upcoming_sessions is defined else mock_upcoming %}
+{% set request_list = my_requests if my_requests is defined else mock_requests %}
+
+<div class="row">
+  <div class="col-12 col-xl-10">
+    <h4 class="fw-bold text-dark mb-3">Gửi đơn xin nghỉ</h4>
+
+    {% if error_message %}
+    <div id="leaveErrorAlert" class="alert alert-danger py-2 px-3 small fw-medium mb-3" style="max-width: 650px;" role="alert">
+      <i class="bi bi-exclamation-triangle-fill me-1"></i> {{ error_message }}
+    </div>
+    {% else %}
+    <div id="leaveErrorAlert" class="alert alert-danger py-2 px-3 small fw-medium d-none mb-3" style="max-width: 650px;" role="alert"></div>
+    {% endif %}
+
+    <form id="leaveRequestForm" method="POST" action="/student/leave" class="mb-4" novalidate>
+      {% if csrf_token is defined %}
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      {% endif %}
+
+      <div class="mb-3" style="max-width: 440px;">
+        <label for="sessionIdSelect" class="form-label small fw-semibold text-secondary mb-1">Buổi học</label>
+        <select id="sessionIdSelect" name="session_id" class="form-select select-square-m06" required>
+          {% for s in sessions_list %}
+          <option value="{{ s.session_id }}">{{ s.label }}</option>
+          {% else %}
+          <option value="" disabled selected>Không có buổi học sắp tới</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="row g-4 align-items-center">
+        <div class="col-12 col-md-7 col-lg-6">
+          <label for="reasonTextarea" class="form-label small fw-semibold text-secondary mb-1">Lý do</label>
+          <textarea
+            id="reasonTextarea"
+            name="reason"
+            class="form-control textarea-square-m06"
+            rows="1"
+            maxlength="255"
+            placeholder="Nhập lý do xin nghỉ..."
+            required
+          >{{ request.form.get('reason', '') if request is defined else '' }}</textarea>
+        </div>
+        <div class="col-12 col-md-auto pt-md-3">
+          <button
+            type="submit"
+            class="btn btn-submit-m06 py-2 px-4"
+            {{ 'disabled' if (sessions_list | length == 0) else '' }}
+          >
+            Gửi
+          </button>
+        </div>
+      </div>
+    </form>
+
+    <h6 class="fw-bold text-dark mb-2">Đơn của tôi</h6>
+    <div class="table-responsive bg-white border" style="max-width: 780px;">
+      <table class="table table-bordered table-hover align-middle mb-0 table-custom">
+        <thead>
+          <tr>
+            <th style="width: 30%;">Buổi học</th>
+            <th style="width: 32%;">Lý do</th>
+            <th style="width: 18%;">Ngày gửi</th>
+            <th style="width: 20%;">Trạng thái</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for req in request_list %}
+          <tr>
+            <td>{{ req.session_label }}</td>
+            <td>{{ req.reason }}</td>
+            <td>{{ req.created_at }}</td>
+            <td>
+              {% if req.status == 'APPROVED' %}
+                <span class="status-pill pill-approved">Đã duyệt</span>
+              {% elif req.status == 'PENDING' %}
+                <span class="status-pill pill-pending">Chờ duyệt</span>
+              {% elif req.status == 'REJECTED' %}
+                <span class="status-pill pill-rejected">Từ chối</span>
+              {% else %}
+                <span class="badge bg-secondary">{{ req.status }}</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="4" class="text-center text-muted py-4">Chưa có đơn xin nghỉ nào.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const form = document.getElementById('leaveRequestForm');
+    const sessionSelect = document.getElementById('sessionIdSelect');
+    const reasonInput = document.getElementById('reasonTextarea');
+    const errorAlert = document.getElementById('leaveErrorAlert');
+
+    const pendingSessionIds = new Set([
+      {% for req in request_list %}
+        {% if req.status == 'PENDING' and req.session_id is defined %}
+          "{{ req.session_id }}",
+        {% endif %}
+      {% endfor %}
+    ]);
+    const pendingSessionLabels = new Set([
+      {% for req in request_list %}
+        {% if req.status == 'PENDING' %}
+          {{ req.session_label | tojson }},
+        {% endif %}
+      {% endfor %}
+    ]);
+
+    function showError(msg) {
+      errorAlert.innerHTML = `<i class="bi bi-exclamation-triangle-fill me-1"></i> ${msg}`;
+      errorAlert.classList.remove('d-none');
+    }
+
+    form.addEventListener('submit', function (e) {
+      errorAlert.classList.add('d-none');
+      const selectedId = sessionSelect.value;
+      const selectedText = sessionSelect.options[sessionSelect.selectedIndex]?.text || '';
+      const reason = reasonInput.value.trim();
+
+      if (!selectedId) {
+        e.preventDefault();
+        showError('Vui lòng chọn buổi học sắp tới.');
+        sessionSelect.focus();
+        return;
+      }
+      if (!reason) {
+        e.preventDefault();
+        showError('Vui lòng nhập lý do xin nghỉ.');
+        reasonInput.focus();
+        return;
+      }
+      if (pendingSessionIds.has(selectedId) || pendingSessionLabels.has(selectedText.trim())) {
+        e.preventDefault();
+        showError('Buổi học này đã có đơn xin nghỉ đang chờ duyệt.');
+        sessionSelect.focus();
+      }
+    });
+  });
+</script>
+{% endblock %}
