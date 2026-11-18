@@ -84,8 +84,8 @@ class Student(User):
         return LeaveService.submit(self.id, session_id, reason)
     
     def view_notifications(self, unread_only: bool = False):
-        """UC15."""
-        raise NotImplementedError("TODO TV3: NotificationService.list_for_user")
+        from app.services.notification_service import NotificationService
+        return NotificationService.list_for_user(self.id, unread_only=unread_only)
 
 
 class Lecturer(User):
