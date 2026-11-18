@@ -43,8 +43,31 @@ class ClassSection(db.Model):
         raise NotImplementedError("TODO TV3: ClassService.add_student")
 
     def get_attendance_rate(self, student_id: int | None = None) -> float:
-        """Tỷ lệ điểm danh (BR7). Có student_id: của sinh viên đó; không: toàn lớp."""
-        raise NotImplementedError("TODO TV2: AttendanceService.attendance_rate")
+        """Tỷ lệ điểm danh (BR7). Có student_id: của sinh viên đó; không có: cả lớp."""
+        from datetime import date
+        from app.models.attendance import Attendance
+        from app.models.enums import AttendanceStatus
+
+        if student_id is not None:
+            from app.services.attendance_service import AttendanceService
+            return AttendanceService.attendance_summary(student_id, self.id)["attendance_rate"]
+
+        today = date.today()
+        rows = (
+            Attendance.query
+            .join(ClassSession, Attendance.session_id == ClassSession.id)
+            .filter(
+                ClassSession.section_id == self.id,
+                ClassSession.session_date <= today,
+            )
+            .all()
+        )
+        if not rows:
+            return 0.0
+        attended = sum(
+            1 for r in rows if r.status in (AttendanceStatus.PRESENT, AttendanceStatus.LATE, AttendanceStatus.EXCUSED)
+        )
+        return attended / len(rows)
 
     def __repr__(self):
         return f"<ClassSection {self.id} course={self.course_id} {self.semester}>"
