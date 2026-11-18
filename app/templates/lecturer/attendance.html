@@ -1,0 +1,110 @@
+
+{% extends "base.html" %}
+
+{% block title %}Điểm danh buổi học{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <h2 class="mb-2">Điểm danh sinh viên</h2>
+
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5>{{ session.course_name }}</h5>
+            <p class="mb-1">
+                Ngày học: {{ session.session_date }}
+            </p>
+            <p class="mb-0">
+                Thời gian: {{ session.start_time }} - {{ session.end_time }}
+            </p>
+        </div>
+    </div>
+
+    {% if error_code %}
+    <div class="alert alert-danger">
+        <strong>{{ error_code }}</strong>: {{ error_message }}
+    </div>
+    {% endif %}
+
+    <form method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+        <div class="d-flex justify-content-between mb-3">
+            <h5>Danh sách sinh viên</h5>
+            <button type="button" class="btn btn-outline-primary"
+                    onclick="markAllPresent()">
+                Đánh dấu tất cả có mặt
+            </button>
+        </div>
+
+        {% if students %}
+        <div class="table-responsive">
+            <table class="table table-bordered align-middle">
+                <thead>
+                    <tr>
+                        <th>Mã sinh viên</th>
+                        <th>Họ tên</th>
+                        <th>Trạng thái</th>
+                        <th>Ghi chú</th>
+                        <th>Lý do sửa</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {% for student in students %}
+                    <tr>
+                        <td>{{ student.student_code }}</td>
+                        <td>{{ student.full_name }}</td>
+                        <td>
+                            <select class="form-select"
+                                    name="status[{{ student.student_id }}]">
+                                <option value="">-- Chọn --</option>
+                                {% for status in ['PRESENT', 'ABSENT', 'LATE', 'EXCUSED'] %}
+                                <option value="{{ status }}"
+                                    {% if student.status and student.status.name == status %}selected{% endif %}>
+                                    {% if status == 'PRESENT' %}Có mặt
+                                    {% elif status == 'ABSENT' %}Vắng
+                                    {% elif status == 'LATE' %}Đi muộn
+                                    {% else %}Có phép{% endif %}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </td>
+                        <td>
+                            <input class="form-control"
+                                   name="note[{{ student.student_id }}]"
+                                   value="{{ student.note or '' }}"
+                                   maxlength="255">
+                        </td>
+                        <td>
+                            <input class="form-control"
+                                   name="reason[{{ student.student_id }}]"
+                                   placeholder="Lý do nếu đổi trạng thái">
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <button type="submit" class="btn btn-primary">
+            Lưu điểm danh
+        </button>
+        {% else %}
+        <div class="alert alert-info">
+            Chưa có sinh viên đăng ký lớp học này.
+        </div>
+        {% endif %}
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function markAllPresent() {
+    document.querySelectorAll('select[name^="status["]')
+        .forEach(select => {
+            select.value = 'PRESENT';
+        });
+}
+</script>
+{% endblock %}
