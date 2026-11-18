@@ -80,9 +80,9 @@ class Student(User):
         raise NotImplementedError("TODO TV2: AttendanceService.check_in")
 
     def submit_leave_request(self, session_id: int, reason: str):
-        """UC4."""
-        raise NotImplementedError("TODO TV3: LeaveService.submit")
-
+        from app.services.leave_service import LeaveService
+        return LeaveService.submit(self.id, session_id, reason)
+    
     def view_notifications(self, unread_only: bool = False):
         from app.services.notification_service import NotificationService
         return NotificationService.list_for_user(self.id, unread_only=unread_only)
