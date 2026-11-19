@@ -1,0 +1,7 @@
+{% extends "base.html" %}{% block title %}Sửa người dùng{% endblock %}{% block content %}
+<div class="container"><h3>M13 – Sửa thông tin người dùng</h3><form method="post" class="card card-body gap-3">
+<input type="hidden" name="csrf_token" value="{{csrf_token()}}">
+<label>Họ tên<input required class="form-control" name="full_name" value="{{user.full_name}}"></label>
+<label>Email<input required type="email" class="form-control" name="email" value="{{user.email}}"></label>
+{% if user.role.value=='STUDENT' %}<label>Lớp<input class="form-control" name="class_name" value="{{user.class_name or ''}}"></label>{% elif user.role.value=='LECTURER' %}<label>Khoa<input class="form-control" name="department" value="{{user.department or ''}}"></label>{% endif %}
+<div><button class="btn btn-primary">Lưu</button> <a class="btn btn-secondary" href="{{url_for('admin.users')}}">Quay lại</a></div></form></div>{% endblock %}
