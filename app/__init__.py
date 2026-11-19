@@ -43,6 +43,9 @@ def create_app(config_class=Config):
     from app.routes.student_check_in_routes import bp as student_check_in_bp
     app.register_blueprint(student_check_in_bp)
 
+    from app.routes.tv3_3 import tv3_3_bp
+    app.register_blueprint(tv3_3_bp)
+
     @app.errorhandler(403)
     def forbidden(_error):
         """Sai vai trò (role_required) → trang 403."""
