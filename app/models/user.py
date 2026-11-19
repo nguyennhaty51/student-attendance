@@ -75,9 +75,11 @@ class Student(User):
         """UC2."""
         raise NotImplementedError("TODO TV2: AttendanceService.history_for_student")
 
+    
     def check_in(self, code: str):
-        """UC3 – điểm danh bằng mã (checkIn(code))."""
-        raise NotImplementedError("TODO TV2: AttendanceService.check_in")
+        from app.services.check_in_service import check_in_service
+        return check_in_service.check_in(self, code)
+
 
     def submit_leave_request(self, session_id: int, reason: str):
         from app.services.leave_service import LeaveService
