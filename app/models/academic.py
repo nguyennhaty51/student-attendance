@@ -104,6 +104,10 @@ class ClassSession(db.Model):
     attendances = db.relationship("Attendance", back_populates="session", cascade="all, delete-orphan")
     leave_requests = db.relationship("LeaveRequest", back_populates="session", cascade="all, delete-orphan")
 
+    @property
+    def is_open(self) -> bool:
+        return bool(self.check_in_code)
+
     def generate_code(self, minutes: int = 5) -> str:
         """UC6 – sinh PIN 6 chữ số, hiệu lực `minutes` phút (BR5, mặc định 5). Chưa commit."""
         self.check_in_code = "".join(secrets.choice("0123456789") for _ in range(6))
@@ -111,8 +115,9 @@ class ClassSession(db.Model):
         return self.check_in_code
 
     def close_code(self) -> None:
-        """Đóng phiên sớm: mã hết hiệu lực ngay (M10 – Close session)."""
-        self.code_expiry = datetime.utcnow()
+        """Close the check-in session and clear its PIN."""
+        self.check_in_code = None
+        self.code_expiry = None
 
     def is_code_valid(self, code: str | None = None) -> bool:
         """Mã còn hạn (và khớp, nếu truyền `code`). Không có cột trạng thái: phiên mở = có mã chưa hết hạn."""

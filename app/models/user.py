@@ -117,9 +117,15 @@ class Lecturer(User):
         from app.services.attendance_service import AttendanceService
         return AttendanceService.take_attendance(self.id, session_id, records)
     
-    def open_check_in_session(self, session_id: int, minutes: int = 5):
-        """UC6."""
-        raise NotImplementedError("TODO TV2: AttendanceService.open_check_in_session")
+    def open_check_in_session(self, session_id: int, minutes: int = 5, qr_payload_factory=None):
+        """Mở phiên điểm danh thông qua QR session service."""
+        from app.services.qr_session_service import qr_session_service
+        return qr_session_service.open_session(self, session_id, minutes, qr_payload_factory)
+
+    def close_check_in_session(self, session_id: int):
+        """Đóng phiên điểm danh thông qua QR session service."""
+        from app.services.qr_session_service import qr_session_service
+        return qr_session_service.close_session(self, session_id)
 
     def edit_attendance(self, attendance_id: int, new_status, reason: str):
         """UC7 – ghi AttendanceLog (BR6)."""

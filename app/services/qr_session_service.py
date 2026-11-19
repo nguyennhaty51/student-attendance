@@ -34,7 +34,7 @@ class QrSessionService:
                      qr_payload_factory: Optional[QrPayloadFactory] = None) -> dict:
         """Mở phiên. Nếu buổi học đã có phiên đang mở thì trả lại mã hiện tại, không tạo mã mới."""
         session = self._get_owned_session(lecturer, session_id)
-        already_open = session.is_open
+        already_open = session.is_code_valid()
         if not already_open:
             self._assign_unique_code(session, minutes)
             self.repo.commit()
@@ -60,10 +60,10 @@ class QrSessionService:
         session = self._get_owned_session(lecturer, session_id)
         return {
             "session_id": session.id,
-            "is_open": session.is_open,
-            "is_expired": session.is_open and not session.is_code_valid(),
+            "is_open": session.is_open and session.is_code_valid(),
+            "is_expired": bool(session.check_in_code) and not session.is_code_valid(),
             "attended": self.repo.count_present(session.id),
-            "total": self.repo.count_students(session.class_section_id),
+            "total": self.repo.count_students(session.section_id),
         }
 
     # ---------- nội bộ ----------
@@ -71,7 +71,7 @@ class QrSessionService:
         session = self.repo.get_session(session_id)
         if session is None:
             raise SessionNotFoundError(session_id)
-        if self.repo.get_section_lecturer_id(session.class_section_id) != lecturer.id:  # QT4
+        if self.repo.get_section_lecturer_id(session.section_id) != lecturer.id:  # QT4
             raise NotSessionLecturerError(session_id)
         return session
 
@@ -85,7 +85,7 @@ class QrSessionService:
         raise RuntimeError("Không sinh được mã điểm danh duy nhất, vui lòng thử lại")
 
     def _build_state(self, session, qr_payload_factory: Optional[QrPayloadFactory] = None) -> dict:
-        is_open = session.is_open
+        is_open = session.is_open and session.is_code_valid()
         expiry = session.code_expiry if is_open else None
         qr_base64 = None
         if is_open:
@@ -94,12 +94,12 @@ class QrSessionService:
         return {
             "session_id": session.id,
             "is_open": is_open,
-            "is_expired": is_open and not session.is_code_valid(),
+            "is_expired": bool(session.check_in_code) and not session.is_code_valid(),
             "pin": session.check_in_code if is_open else None,
             "qr_base64": qr_base64,                                   # <img src="data:image/png;base64,{{ qr_base64 }}">
             "expires_at": expiry.isoformat() + "Z" if expiry else None,  # UTC
             "attended": self.repo.count_present(session.id),
-            "total": self.repo.count_students(session.class_section_id),
+            "total": self.repo.count_students(session.section_id),
         }
 
 
