@@ -32,6 +32,8 @@ def create_app(config_class=Config):
     from app.routes.lecturer_classes import lecturer_classes_bp
     from app.routes.reports import reports_bp
     from app.routes.admin import admin_bp
+    from app.routes.student_leave import student_leave_bp
+    from app.routes.notifications import notification_bp 
 
     app.register_blueprint(main_bp)
     app.register_blueprint(auth_bp)
@@ -39,6 +41,14 @@ def create_app(config_class=Config):
     app.register_blueprint(lecturer_classes_bp)
     app.register_blueprint(reports_bp)
     app.register_blueprint(admin_bp)
+    app.register_blueprint(student_leave_bp)
+    app.register_blueprint(notification_bp)
+    
+    from app.routes.student_check_in_routes import bp as student_check_in_bp
+    app.register_blueprint(student_check_in_bp)
+
+    from app.routes.tv3_3 import tv3_3_bp
+    app.register_blueprint(tv3_3_bp)
 
     @app.errorhandler(403)
     def forbidden(_error):

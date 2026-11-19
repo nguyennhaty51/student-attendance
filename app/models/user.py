@@ -75,17 +75,19 @@ class Student(User):
         """UC2."""
         raise NotImplementedError("TODO TV2: AttendanceService.history_for_student")
 
+    
     def check_in(self, code: str):
-        """UC3 – điểm danh bằng mã (checkIn(code))."""
-        raise NotImplementedError("TODO TV2: AttendanceService.check_in")
+        from app.services.check_in_service import check_in_service
+        return check_in_service.check_in(self, code)
+
 
     def submit_leave_request(self, session_id: int, reason: str):
-        """UC4."""
-        raise NotImplementedError("TODO TV3: LeaveService.submit")
-
+        from app.services.leave_service import LeaveService
+        return LeaveService.submit(self.id, session_id, reason)
+    
     def view_notifications(self, unread_only: bool = False):
-        """UC15."""
-        raise NotImplementedError("TODO TV3: NotificationService.list_for_user")
+        from app.services.notification_service import NotificationService
+        return NotificationService.list_for_user(self.id, unread_only=unread_only)
 
 
 class Lecturer(User):
