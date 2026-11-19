@@ -1,0 +1,26 @@
+PATCH M12–M15 CHO STUDENT-ATTENDANCE
+====================================
+
+1) Sao lưu thư mục project trước khi chép đè.
+2) Giải nén ZIP này ngay tại thư mục gốc student-attendance, giữ nguyên cấu trúc app/...
+3) Mở app/__init__.py kiểm tra đã đăng ký admin_bp.
+4) Cài thư viện theo requirements.txt của project (openpyxl, reportlab đã được khai báo).
+5) Chạy kiểm tra cú pháp:
+   python -m compileall app
+6) Chạy ứng dụng:
+   python -m flask --app wsgi run --debug
+7) Đăng nhập bằng tài khoản ADMIN hiện có để kiểm tra:
+   /admin/users
+   /admin/sections
+   /admin/sessions
+   /reports
+
+LƯU Ý QUAN TRỌNG
+- Đây là PATCH gồm 10 file, không phải toàn bộ project.
+- M13 tạo mật khẩu tạm ngẫu nhiên và hiển thị một lần trong thông báo sau khi tạo; hãy lưu lại an toàn và đổi sau khi đăng nhập.
+- M14 nhập Excel: cột A là mã sinh viên; định dạng .xlsx.
+- M14 không cho gỡ sinh viên nếu đã có bản ghi điểm danh.
+- M15 không cho sửa/xóa buổi học nếu đã có điểm danh.
+- M12 xuất PDF dùng bảng ký tự không dấu để tránh lỗi font tiếng Việt trên máy chưa cài font Unicode.
+- Chưa thể chạy integration test trên môi trường Flask/DB của máy bạn từ ZIP này; hãy chạy thử trên bản sao project và báo lại traceback nếu có.
+- Đặc tả docs/api_contract.md trong ZIP ghi rõ là BẢN ĐỀ XUẤT chờ nhóm duyệt, nên cần đối chiếu với phân công/chốt cuối của nhóm.

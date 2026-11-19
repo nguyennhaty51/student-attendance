@@ -30,6 +30,8 @@ def create_app(config_class=Config):
     from app.routes.auth import auth_bp
     from app.routes.lecturer_attendance import attendance_bp
     from app.routes.lecturer_classes import lecturer_classes_bp
+    from app.routes.reports import reports_bp
+    from app.routes.admin import admin_bp
     from app.routes.student_leave import student_leave_bp
     from app.routes.notifications import notification_bp 
 
@@ -37,6 +39,8 @@ def create_app(config_class=Config):
     app.register_blueprint(auth_bp)
     app.register_blueprint(attendance_bp)
     app.register_blueprint(lecturer_classes_bp)
+    app.register_blueprint(reports_bp)
+    app.register_blueprint(admin_bp)
     app.register_blueprint(student_leave_bp)
     app.register_blueprint(notification_bp)
     
