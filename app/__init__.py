@@ -44,8 +44,10 @@ def create_app(config_class=Config):
     app.register_blueprint(student_leave_bp)
     app.register_blueprint(notification_bp)
     
+    from app.routes.lecturer_check_in_routes import bp as lecturer_check_in_bp
     from app.routes.student_check_in_routes import bp as student_check_in_bp
     app.register_blueprint(student_check_in_bp)
+    app.register_blueprint(lecturer_check_in_bp)
 
     from app.routes.tv3_3 import tv3_3_bp
     app.register_blueprint(tv3_3_bp)

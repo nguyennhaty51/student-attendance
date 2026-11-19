@@ -17,14 +17,14 @@ from app.services.check_in_common import (
 
 logger = logging.getLogger(__name__)
 
-CODE_PATTERN = re.compile(r"[0-9]{6}")  # chỉ chữ số ASCII, đúng 6 ký tự
+CODE_PATTERN = re.compile(r"[0-9]{6}")  # chá»‰ chá»¯ sá»‘ ASCII, Ä‘Ãºng 6 kÃ½ tá»±
 
 
 class CheckInThrottle:
-    """Đếm số lần nhập sai liên tiếp theo từng sinh viên, quá ngưỡng thì tạm khóa (NFR11).
+    """Äáº¿m sá»‘ láº§n nháº­p sai liÃªn tiáº¿p theo tá»«ng sinh viÃªn, quÃ¡ ngÆ°á»¡ng thÃ¬ táº¡m khÃ³a (NFR11).
 
-    Lưu trong bộ nhớ tiến trình: đủ cho chạy 1 tiến trình (flask run / 1 worker).
-    Nếu triển khai nhiều worker thì chuyển sang lưu DB hoặc Redis, giữ nguyên các hàm bên dưới.
+    LÆ°u trong bá»™ nhá»› tiáº¿n trÃ¬nh: Ä‘á»§ cho cháº¡y 1 tiáº¿n trÃ¬nh (flask run / 1 worker).
+    Náº¿u triá»ƒn khai nhiá»u worker thÃ¬ chuyá»ƒn sang lÆ°u DB hoáº·c Redis, giá»¯ nguyÃªn cÃ¡c hÃ m bÃªn dÆ°á»›i.
     """
 
     def __init__(self, max_failures: int = MAX_FAILED_ATTEMPTS, lock_seconds: int = LOCK_SECONDS):
@@ -35,7 +35,7 @@ class CheckInThrottle:
         self._mutex = threading.Lock()
 
     def seconds_locked(self, key) -> int:
-        """Số giây còn bị khóa (0 nếu không bị khóa)."""
+        """Sá»‘ giÃ¢y cÃ²n bá»‹ khÃ³a (0 náº¿u khÃ´ng bá»‹ khÃ³a)."""
         with self._mutex:
             until = self._locked_until.get(key)
             if until is None:
@@ -71,28 +71,27 @@ class CheckInService:
         return self.throttle.seconds_locked(student_id)
 
     def check_in(self, student, code) -> CheckInResult:
-        # NFR11: đang bị khóa thì không xử lý, không để dò mã tiếp
+        # NFR11: Ä‘ang bá»‹ khÃ³a thÃ¬ khÃ´ng xá»­ lÃ½, khÃ´ng Ä‘á»ƒ dÃ² mÃ£ tiáº¿p
         if self.throttle.seconds_locked(student.id):
             return CheckInResult.TOO_MANY_ATTEMPTS
 
         code = (code or "").strip()
         session = self.repo.find_session_by_code(code) if CODE_PATTERN.fullmatch(code) else None
 
-        # Mã sai (hoặc phiên đã đóng nên mã đã bị xóa)
+        # MÃ£ sai (hoáº·c phiÃªn Ä‘Ã£ Ä‘Ã³ng nÃªn mÃ£ Ä‘Ã£ bá»‹ xÃ³a)
         if session is None:
             self.throttle.register_failure(student.id)
             return CheckInResult.WRONG_CODE
 
-        # Mã đúng nhưng đã hết hạn
+        # MÃ£ Ä‘Ãºng nhÆ°ng Ä‘Ã£ háº¿t háº¡n
         if not session.is_code_valid():
             return CheckInResult.EXPIRED
 
-        # QT3: sinh viên phải thuộc lớp của buổi học
-        if not self.repo.is_student_in_section(student.id, session.class_section_id):
-            self.throttle.register_failure(student.id)
+              # QT3: sinh viÃªn pháº£i thuá»™c lá»›p cá»§a buá»•i há»c
+        if not self.repo.is_student_in_section(student.id, session.section_id):
             return CheckInResult.NOT_IN_CLASS
 
-        # QT1: mỗi buổi chỉ điểm danh một lần
+        # QT1: má»—i buá»•i chá»‰ Ä‘iá»ƒm danh má»™t láº§n
         if self.repo.has_attendance(student.id, session.id):
             return CheckInResult.ALREADY_CHECKED_IN
 
@@ -100,7 +99,7 @@ class CheckInService:
             self.repo.add_present(student.id, session.id, utcnow())
             self.repo.commit()
         except IntegrityError:
-            # Hai yêu cầu cùng lúc: unique (student_id, class_session_id) chặn bản ghi thứ hai
+            # Hai yÃªu cáº§u cÃ¹ng lÃºc: unique (student_id, class_session_id) cháº·n báº£n ghi thá»© hai
             self.repo.rollback()
             return CheckInResult.ALREADY_CHECKED_IN
 
@@ -109,15 +108,20 @@ class CheckInService:
         return CheckInResult.SUCCESS
 
     def _after_check_in(self, student, session) -> None:
-        """Sau khi ghi nhận, gọi kiểm tra ngưỡng vắng (TV2-3). Lỗi ở đây không được làm hỏng điểm danh."""
+        """Kiá»ƒm tra ngÆ°á»¡ng váº¯ng sau khi Ä‘iá»ƒm danh."""
         try:
-            from app.services.absence_service import check_absence_threshold  # TV2-3
+            from app.services.absence_service import check_absence_threshold
         except ImportError:
-            return  # TV2-3 chưa được merge
+            return
+
         try:
-            check_absence_threshold(student.id, session.class_section_id)
+            check_absence_threshold(student.id, session.section_id)
         except Exception:
-            logger.exception("Kiểm tra ngưỡng vắng thất bại (student=%s, class=%s)", student.id, session.class_section_id)
+            logger.exception(
+                "Kiá»ƒm tra ngÆ°á»¡ng váº¯ng tháº¥t báº¡i (student=%s, section=%s)",
+                student.id,
+                session.section_id,
+            )
 
 
 check_in_service = CheckInService()

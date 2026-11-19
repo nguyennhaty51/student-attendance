@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+
+{% block title %}Điểm danh QR/PIN{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2>Điểm danh bằng QR/PIN</h2>
+            <p class="text-muted mb-0">Quản lý phiên điểm danh của buổi học</p>
+        </div>
+        <a href="/lecturer/classes" class="btn btn-outline-secondary">
+            Quay lại danh sách lớp
+        </a>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body text-center p-4">
+            {% if is_open and not is_expired %}
+                <div class="alert alert-success">
+                    Phiên điểm danh đang mở
+                </div>
+
+                <p class="text-muted mb-2">Mã PIN dành cho sinh viên</p>
+                <div class="display-3 fw-bold text-primary mb-3"
+                     style="letter-spacing: 8px;">
+                    {{ pin }}
+                </div>
+
+                {% if qr_base64 %}
+                    <p class="text-muted">Sinh viên có thể quét mã QR bên dưới</p>
+                    <img
+                        src="data:image/png;base64,{{ qr_base64 }}"
+                        alt="Mã QR điểm danh"
+                        class="img-fluid border rounded p-2 mb-3"
+                        style="max-width: 260px;"
+                    >
+                {% endif %}
+
+                <p class="text-muted">
+                    Hết hạn: <strong>{{ expires_at }}</strong>
+                </p>
+
+                <form method="POST"
+                      action="{{ url_for('lecturer_check_in.close_session', session_id=session_id) }}"
+                      onsubmit="return confirm('Bạn có chắc muốn đóng phiên điểm danh?');">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-danger">
+                        Đóng phiên điểm danh
+                    </button>
+                </form>
+
+            {% elif is_expired %}
+                <div class="alert alert-warning">
+                    Mã điểm danh đã hết hạn. Hãy mở phiên mới để tạo PIN và QR mới.
+                </div>
+
+                <form method="POST"
+                      action="{{ url_for('lecturer_check_in.open_session', session_id=session_id) }}"
+                      class="mx-auto"
+                      style="max-width: 320px;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <label for="minutes" class="form-label">
+                        Thời hạn PIN (phút)
+                    </label>
+                    <input
+                        type="number"
+                        id="minutes"
+                        name="minutes"
+                        class="form-control mb-3"
+                        value="5"
+                        min="1"
+                        max="30"
+                        required
+                    >
+                    <button type="submit" class="btn btn-primary">
+                        Mở phiên mới
+                    </button>
+                </form>
+
+            {% else %}
+                <div class="alert alert-secondary">
+                    Phiên điểm danh hiện đang đóng.
+                </div>
+
+                <form method="POST"
+                      action="{{ url_for('lecturer_check_in.open_session', session_id=session_id) }}"
+                      class="mx-auto"
+                      style="max-width: 320px;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <label for="minutes" class="form-label">
+                        Thời hạn PIN (phút)
+                    </label>
+                    <input
+                        type="number"
+                        id="minutes"
+                        name="minutes"
+                        class="form-control mb-3"
+                        value="5"
+                        min="1"
+                        max="30"
+                        required
+                    >
+                    <button type="submit" class="btn btn-success">
+                        Mở phiên điểm danh
+                    </button>
+                </form>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="card shadow-sm mt-4">
+        <div class="card-body">
+            <h5 class="card-title">Thống kê điểm danh</h5>
+            <div class="row text-center">
+                <div class="col-6">
+                    <div class="text-muted">Đã điểm danh</div>
+                    <div class="fs-2 fw-bold text-success" id="attended-count">
+                        {{ attended }}
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div class="text-muted">Tổng số sinh viên</div>
+                    <div class="fs-2 fw-bold" id="total-count">
+                        {{ total }}
+                    </div>
+                </div>
+            </div>
+            <p class="text-muted small text-center mt-3 mb-0">
+                Số liệu tự cập nhật sau mỗi 10 giây.
+            </p>
+        </div>
+    </div>
+</div>
+
+{% if is_open %}
+<script>
+(function () {
+    const countUrl = {{ url_for(
+        'lecturer_check_in.count',
+        session_id=session_id
+    ) | tojson }};
+
+    async function refreshCounts() {
+        try {
+            const response = await fetch(countUrl);
+            if (!response.ok) return;
+
+            const data = await response.json();
+            document.getElementById("attended-count").textContent = data.attended;
+            document.getElementById("total-count").textContent = data.total;
+        } catch (error) {
+            console.error("Không thể cập nhật thống kê:", error);
+        }
+    }
+
+    refreshCounts();
+    setInterval(refreshCounts, 10000);
+})();
+</script>
+{% endif %}
+{% endblock %}

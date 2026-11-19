@@ -15,6 +15,7 @@ class FakeSession:
     def __init__(self, session_id=10, class_section_id=100):
         self.id = session_id
         self.class_section_id = class_section_id
+        self.section_id = class_section_id
         self.check_in_code = None
         self.code_expiry = None
         self._valid = True

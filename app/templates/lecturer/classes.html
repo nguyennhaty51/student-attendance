@@ -44,6 +44,12 @@
     >
         Điểm danh
     </a>
+    <a
+        href="{{ url_for('lecturer_check_in.view', session_id=section.sessions[0].id) }}"
+        class="btn btn-success btn-sm ms-2"
+    >
+        Mở điểm danh QR/PIN
+    </a>
 {% else %}
     <span class="text-muted small">Chưa có buổi học</span>
 {% endif %}
