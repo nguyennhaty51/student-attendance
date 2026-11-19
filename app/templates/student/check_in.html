@@ -20,288 +20,165 @@
     width: 100%;
     aspect-ratio: 1 / 1;
     max-height: 56px;
-    font-size: 1.35rem;
-    font-weight: 600;
     text-align: center;
+    font-size: 1.5rem;
+    font-weight: 700;
     border: 1.5px solid #9ca3af;
-    border-radius: 2px;
-    background-color: #ffffff;
+    border-radius: 4px;
     color: #111827;
+    background-color: #f9fafb;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
   }
   .pin-box:focus {
-    border-color: #2b6cb0;
-    box-shadow: 0 0 0 2px rgba(43, 108, 176, 0.25);
     outline: none;
-  }
-  .btn-confirm-m04 {
-    background-color: #2b6cb0;
-    border: 1.5px solid #2b6cb0;
-    color: #ffffff;
-    font-weight: 600;
-    border-radius: 6px;
-  }
-  .btn-confirm-m04:hover,
-  .btn-confirm-m04:disabled {
-    background-color: #2b6cb0;
-    border-color: #2b6cb0;
-    color: #ffffff;
-  }
-  .btn-confirm-m04:disabled {
-    opacity: 0.75;
-  }
-  .btn-scan-m04 {
+    border-color: #1d63b8;
     background-color: #ffffff;
-    border: 1.5px solid #9ca3af;
-    color: #111827;
+    box-shadow: 0 0 0 3px rgba(29, 99, 184, 0.15);
+  }
+  .btn-checkin-submit {
+    background-color: #1d63b8;
+    border-color: #1d63b8;
+    color: #ffffff;
     font-weight: 600;
-    border-radius: 6px;
-  }
-  .btn-scan-m04:hover {
-    background-color: #f3f4f6;
-    color: #111827;
-  }
-  .alert-m04-success {
-    background-color: #dcfce7;
-    border: 1.5px solid #2e8540;
-    color: #166534;
     border-radius: 4px;
   }
-  .error-text-m04 {
-    color: #dc2626;
-    font-size: 0.85rem;
-    font-weight: 500;
-  }
-  #qr-reader {
-    width: 100%;
-    border-radius: 4px;
-    overflow: hidden;
+  .btn-checkin-submit:hover {
+    background-color: #164e96;
+    border-color: #164e96;
+    color: #ffffff;
   }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="py-2 py-md-3">
-  <div class="m04-wrapper">
-    <h4 class="fw-bold text-dark mb-2">Điểm danh</h4>
-    <p class="text-secondary small mb-3">
-      Môn học: <strong>{{ course_name if (course_name is defined and course_name) else 'INT1234 – Nhóm 01' }}</strong>
+{% set prefill_code = (code | string) if (code is defined and code) else '' %}
+
+<div class="py-2 py-md-4">
+  <div class="m04-wrapper shadow-sm">
+    <h4 class="fw-bold text-dark text-center mb-2">Điểm danh bằng mã</h4>
+    <p class="text-muted small text-center mb-4">
+      Nhập mã PIN 6 chữ số do giảng viên cung cấp hoặc quét mã QR trên lớp.
     </p>
 
-    <!-- Form nhập mã PIN -->
+    {# ===== Hiển thị thông báo kết quả từ Backend (student_check_in_routes.py) ===== #}
+    {% if result is defined and result %}
+      {% if result == 'SUCCESS' %}
+        <div id="checkInAlert" class="alert alert-success py-2 px-3 small fw-medium mb-3" role="alert">
+          <i class="bi bi-check-circle-fill me-1"></i> {{ message or 'Điểm danh thành công.' }}
+        </div>
+      {% else %}
+        <div id="checkInAlert" class="alert alert-danger py-2 px-3 small fw-medium mb-3" role="alert">
+          <i class="bi bi-exclamation-triangle-fill me-1"></i> {{ message or 'Mã điểm danh không hợp lệ.' }}
+        </div>
+      {% endif %}
+    {% else %}
+      <div id="checkInAlert" class="alert alert-danger py-2 px-3 small fw-medium d-none mb-3" role="alert"></div>
+    {% endif %}
+
     <form id="checkInForm" method="POST" action="/student/check-in" novalidate>
       {% if csrf_token is defined %}
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       {% endif %}
-      <input type="hidden" name="code" id="fullPinInput" value="{{ code or '' }}">
+      <input type="hidden" id="fullPinCode" name="code" value="{{ prefill_code }}">
 
-      <label class="form-label fw-bold text-dark small mb-2">Nhập mã PIN</label>
-
-      <!-- 6 ô vuông nhập PIN -->
-      <div class="pin-grid mb-3" id="pinGroup">
-        {% for i in range(6) %}
-        <input
-          type="text"
-          inputmode="numeric"
-          pattern="[0-9]*"
-          maxlength="1"
-          class="pin-box"
-          aria-label="Chữ số thứ {{ i + 1 }}"
-          autocomplete="{{ 'one-time-code' if i == 0 else 'off' }}"
-          value="{{ code[i] if code and code|length > i else '' }}"
-        >
-        {% endfor %}
+      <div class="mb-4">
+        <label class="form-label small fw-semibold text-secondary d-block text-center mb-2">
+          Mã điểm danh (6 chữ số)
+        </label>
+        <div class="pin-grid" id="pinGrid">
+          {% for i in range(6) %}
+          <input
+            type="text"
+            inputmode="numeric"
+            pattern="[0-9]*"
+            maxlength="1"
+            class="pin-box"
+            aria-label="Chữ số thứ {{ i + 1 }}"
+            value="{{ prefill_code[i] if prefill_code|length > i else '' }}"
+            autocomplete="off"
+          >
+          {% endfor %}
+        </div>
       </div>
 
-      <!-- Nút Xác nhận -->
-      <button
-        type="submit"
-        id="submitPinBtn"
-        class="btn btn-confirm-m04 w-100 py-2 mb-2"
-        {{ '' if (code and code|length == 6) else 'disabled' }}
-      >
-        Xác nhận
+      <button type="submit" class="btn btn-checkin-submit w-100 py-2">
+        Xác nhận điểm danh
       </button>
     </form>
 
-    <!-- Nút Quét mã QR (thuần chữ, không icon giống Wireframe) -->
-    <button type="button" id="toggleQrBtn" class="btn btn-scan-m04 w-100 py-2 mb-3">
-      Quét mã QR
-    </button>
-
-    <!-- Khung camera QR -->
-    <div id="qrSection" class="mb-3 d-none">
-      <div id="qrCameraError" class="error-text-m04 d-none mb-2"></div>
-      <div id="qr-reader" class="border bg-light"></div>
-      <button type="button" id="stopQrBtn" class="btn btn-sm btn-outline-secondary w-100 mt-2">
-        Đóng camera
-      </button>
+    <div class="text-center mt-3">
+      <a href="/student/home" class="text-decoration-none small text-secondary">
+        <i class="bi bi-arrow-left me-1"></i>Quay lại trang chủ
+      </a>
     </div>
-
-    <!-- Đồng hồ đếm ngược hiệu lực -->
-    <div class="small text-dark mb-3">
-      Mã có hiệu lực trong <span id="countdownTimer" class="fw-semibold">05:00</span>
-    </div>
-
-    <!-- Thông báo kết quả trả về từ Backend (Thành công hoặc 4 lỗi đặc tả UC3) -->
-    {% if message %}
-      {% set res_lower = (result | string | lower) if result else '' %}
-      {% set is_success = 'success' in res_lower %}
-      {% if is_success %}
-        <div id="resultAlert" class="p-3 small fw-semibold alert-m04-success" role="alert">
-          {{ message }}
-        </div>
-      {% else %}
-        <div id="resultAlert" class="error-text-m04 mt-2" role="alert">
-          {{ message }}
-        </div>
-      {% endif %}
-    {% else %}
-      <div id="resultAlert" class="d-none" role="alert"></div>
-    {% endif %}
   </div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
-<script src="https://unpkg.com" type="text/javascript"></script>
 <script>
   document.addEventListener('DOMContentLoaded', function () {
-    const pinBoxes = Array.from(document.querySelectorAll('.pin-box'));
-    const fullPinInput = document.getElementById('fullPinInput');
-    const submitBtn = document.getElementById('submitPinBtn');
-    const checkInForm = document.getElementById('checkInForm');
+    const boxes = Array.from(document.querySelectorAll('.pin-box'));
+    const hiddenInput = document.getElementById('fullPinCode');
+    const form = document.getElementById('checkInForm');
+    const alertBox = document.getElementById('checkInAlert');
 
-    const toggleQrBtn = document.getElementById('toggleQrBtn');
-    const stopQrBtn = document.getElementById('stopQrBtn');
-    const qrSection = document.getElementById('qrSection');
-    const qrCameraError = document.getElementById('qrCameraError');
-    const countdownTimer = document.getElementById('countdownTimer');
-
-    let html5QrCode = null;
-    let isScanning = false;
-
-    function syncPinValue() {
-      const code = pinBoxes.map(b => b.value).join('');
-      fullPinInput.value = code;
-      submitBtn.disabled = code.length !== 6;
+    function syncHiddenCode() {
+      hiddenInput.value = boxes.map(b => b.value.trim()).join('');
     }
 
-    function fillPinDigits(rawText) {
-      const digits = (rawText || '').replace(/\D/g, '').slice(0, 6);
-      if (!digits) return false;
-      pinBoxes.forEach((box, idx) => {
-        box.value = digits[idx] || '';
-      });
-      syncPinValue();
-      pinBoxes[Math.min(digits.length, 5)].focus();
-      return digits.length === 6;
+    function showClientError(msg) {
+      alertBox.className = 'alert alert-danger py-2 px-3 small fw-medium mb-3';
+      alertBox.innerHTML = `<i class="bi bi-exclamation-triangle-fill me-1"></i> ${msg}`;
     }
 
-    pinBoxes.forEach((box, index) => {
-      box.addEventListener('input', function () {
-        const cleaned = this.value.replace(/\D/g, '');
-        if (cleaned.length > 1) {
-          fillPinDigits(cleaned);
-          return;
-        }
-        this.value = cleaned;
-        syncPinValue();
-        if (cleaned && index < pinBoxes.length - 1) {
-          pinBoxes[index + 1].focus();
+    boxes.forEach((box, idx) => {
+      box.addEventListener('input', function (e) {
+        const digit = this.value.replace(/\D/g, '').slice(0, 1);
+        this.value = digit;
+        syncHiddenCode();
+        if (digit && idx < boxes.length - 1) {
+          boxes[idx + 1].focus();
         }
       });
 
       box.addEventListener('keydown', function (e) {
-        if (e.key === 'Backspace' && !this.value && index > 0) {
-          pinBoxes[index - 1].focus();
-          pinBoxes[index - 1].value = '';
-          syncPinValue();
-        } else if (e.key === 'ArrowLeft' && index > 0) {
-          pinBoxes[index - 1].focus();
-        } else if (e.key === 'ArrowRight' && index < pinBoxes.length - 1) {
-          pinBoxes[index + 1].focus();
+        if (e.key === 'Backspace' && !this.value && idx > 0) {
+          boxes[idx - 1].focus();
+          boxes[idx - 1].value = '';
+          syncHiddenCode();
         }
       });
 
       box.addEventListener('paste', function (e) {
         e.preventDefault();
-        const pasted = (e.clipboardData || window.clipboardData).getData('text');
-        fillPinDigits(pasted);
-      });
-
-      box.addEventListener('focus', function () {
-        this.select();
+        const pasted = (e.clipboardData || window.clipboardData)
+          .getData('text')
+          .replace(/\D/g, '')
+          .slice(0, 6);
+        if (!pasted) return;
+        pasted.split('').forEach((ch, i) => {
+          if (boxes[i]) boxes[i].value = ch;
+        });
+        syncHiddenCode();
+        const nextIdx = Math.min(pasted.length, boxes.length - 1);
+        boxes[nextIdx].focus();
       });
     });
 
-    const firstEmpty = pinBoxes.find(b => !b.value) || pinBoxes;
-    if (firstEmpty) firstEmpty.focus();
-    syncPinValue();
-
-    let remainingSeconds = {{ remaining_seconds if remaining_seconds is defined else 300 }};
-    function tickTimer() {
-      if (remainingSeconds <= 0) {
-        countdownTimer.textContent = '00:00 (Đã hết hạn)';
-        countdownTimer.classList.add('text-danger');
-        return;
-      }
-      const m = String(Math.floor(remainingSeconds / 60)).padStart(2, '0');
-      const s = String(remainingSeconds % 60).padStart(2, '0');
-      countdownTimer.textContent = `${m}:${s}`;
-      remainingSeconds -= 1;
-      setTimeout(tickTimer, 1000);
-    }
-    tickTimer();
-
-    async function stopScanner() {
-      if (html5QrCode && isScanning) {
-        try { await html5QrCode.stop(); } catch (_) {}
-        isScanning = false;
-      }
-      qrSection.classList.add('d-none');
-      toggleQrBtn.classList.remove('d-none');
+    if (boxes[0] && !boxes[0].value) {
+      boxes[0].focus();
     }
 
-    function extractPinFromQr(text) {
-      try {
-        const u = new URL(text);
-        if (u.searchParams.get('code')) return u.searchParams.get('code');
-      } catch (_) {}
-      return text;
-    }
-
-    toggleQrBtn.addEventListener('click', async function () {
-      qrSection.classList.remove('d-none');
-      qrCameraError.classList.add('d-none');
-      toggleQrBtn.classList.add('d-none');
-
-      if (typeof Html5Qrcode === 'undefined') {
-        qrCameraError.textContent = 'Không tải được thư viện quét QR. Bạn vẫn có thể nhập PIN 6 số ở trên.';
-        qrCameraError.classList.remove('d-none');
-        return;
-      }
-
-      try {
-        if (!html5QrCode) html5QrCode = new Html5Qrcode('qr-reader');
-        await html5QrCode.start(
-          { facingMode: 'environment' },
-          { fps: 10, qrbox: { width: 220, height: 220 } },
-          async (decodedText) => {
-            const ok = fillPinDigits(extractPinFromQr(decodedText));
-            await stopScanner();
-            if (ok) checkInForm.submit();
-          },
-          () => {}
-        );
-        isScanning = true;
-      } catch (_) {
-        isScanning = false;
-        qrCameraError.textContent = 'Không có camera hoặc chưa cấp quyền truy cập camera. Bạn vẫn có thể nhập mã PIN ở trên.';
-        qrCameraError.classList.remove('d-none');
+    form.addEventListener('submit', function (e) {
+      syncHiddenCode();
+      if (hiddenInput.value.length !== 6) {
+        e.preventDefault();
+        showClientError('Vui lòng nhập đầy đủ 6 chữ số của mã điểm danh.');
+        const emptyBox = boxes.find(b => !b.value) || boxes[0];
+        emptyBox.focus();
       }
     });
-
-    stopQrBtn.addEventListener('click', stopScanner);
   });
 </script>
 {% endblock %}

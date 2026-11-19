@@ -26,24 +26,7 @@
 {% endblock %}
 
 {% block content %}
-{# Dùng dữ liệu mẫu chuẩn cấu trúc docs/api_contract.md (mới nhất trước) nếu backend chưa xong #}
-{% set mock_notifications = [
-  {
-    "id": 2,
-    "title": "Cảnh báo vắng học - INT1234",
-    "message": "Tỷ lệ vắng của bạn ở môn INT1234 hiện là 25%, vượt ngưỡng cho phép 20%.",
-    "is_read": false,
-    "created_at": "17/11/2026 08:30"
-  },
-  {
-    "id": 1,
-    "title": "Cảnh báo vắng học - INT2201",
-    "message": "Tỷ lệ vắng của bạn ở môn INT2201 hiện là 22%.",
-    "is_read": true,
-    "created_at": "15/11/2026 14:15"
-  }
-] %}
-{% set notif_list = notifications if notifications is defined else mock_notifications %}
+{% set notif_list = notifications if notifications is defined else [] %}
 {% set unread_total = notif_list | rejectattr("is_read") | list | length %}
 
 <div class="row">
@@ -99,45 +82,21 @@
 
 {% block extra_js %}
 <script>
-  function updateMenuBadge(count) {
+  document.addEventListener('DOMContentLoaded', function () {
+    const unreadCount = {{ unread_total }};
     const notifLink = document.querySelector('#sidebarMenu a[href="/student/notifications"]');
     if (!notifLink) return;
     let badge = notifLink.querySelector('.badge');
-    if (count > 0) {
+    if (unreadCount > 0) {
       if (!badge) {
         badge = document.createElement('span');
         badge.className = 'badge bg-danger rounded-pill ms-2';
         notifLink.appendChild(badge);
       }
-      badge.textContent = count;
+      badge.textContent = unreadCount;
     } else if (badge) {
       badge.remove();
     }
-  }
-
-  document.addEventListener('DOMContentLoaded', function () {
-    let unreadCount = {{ unread_total }};
-    updateMenuBadge(unreadCount);
-
-    {% if notifications is not defined %}
-    document.querySelectorAll('.mark-read-form').forEach(function (form) {
-      form.addEventListener('submit', function (e) {
-        e.preventDefault();
-        const card = form.closest('[id^="notif-item-"]');
-        if (card) {
-          card.classList.remove('notif-card-unread');
-          card.classList.add('notif-card-read');
-          const tag = card.querySelector('.unread-tag');
-          if (tag) tag.remove();
-          form.remove();
-          unreadCount = Math.max(0, unreadCount - 1);
-          updateMenuBadge(unreadCount);
-          const headerBadge = document.getElementById('unreadHeaderBadge');
-          if (headerBadge) headerBadge.textContent = 'Chưa đọc: ' + unreadCount;
-        }
-      });
-    });
-    {% endif %}
   });
 </script>
 {% endblock %}
