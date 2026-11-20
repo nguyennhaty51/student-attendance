@@ -16,6 +16,7 @@ instance/
 # IDE
 .vscode/
 .idea/
+.vs/
 *.swp
 .DS_Store
 
