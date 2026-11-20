@@ -1,9 +1,36 @@
+# Chạy: docker compose up --build   (mở http://localhost:5000)
+# Giá trị lấy từ file .env (xem .env.example); không có .env vẫn chạy với giá trị mặc định bên dưới.
 services:
+  db:
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-attendance}
+      MYSQL_USER: ${MYSQL_USER:-attendance}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-attendance_pw}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root_pw}
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p\"$$MYSQL_ROOT_PASSWORD\" --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+
   web:
     build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
     ports:
-      - "5000:5000"
-    env_file:
-      - .env
-    volumes:
-      - .:/app
+      - "${WEB_PORT:-5000}:5000"
+    environment:
+      SECRET_KEY: ${SECRET_KEY:-doi-gia-tri-nay-khi-trien-khai}
+      DATABASE_URL: mysql+pymysql://${MYSQL_USER:-attendance}:${MYSQL_PASSWORD:-attendance_pw}@db:3306/${MYSQL_DATABASE:-attendance}?charset=utf8mb4
+      SEED_ON_START: ${SEED_ON_START:-1}
+
+volumes:
+  db_data:

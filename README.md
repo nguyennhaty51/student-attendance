@@ -1,52 +1,136 @@
 # Hệ thống điểm danh sinh viên – Nhóm 10
 
-Ứng dụng web Flask (kiến trúc MVC, Mục 7.1 của tài liệu). Phần TV1 (ngày 1–2): lớp đối tượng, CSDL, dữ liệu mẫu, hợp đồng frontend–backend.
+Ứng dụng web Flask (kiến trúc MVC, Mục 7.1 của tài liệu) cho 3 vai trò: **sinh viên** điểm danh bằng mã PIN/QR và xem lịch sử, **giảng viên** mở phiên điểm danh, điểm danh thủ công, sửa điểm danh, duyệt đơn nghỉ, xem báo cáo, **quản trị viên** quản lý người dùng, lớp học phần, buổi học và xem báo cáo.
 
-## Cấu trúc
+Công nghệ: Python 3.12, Flask 3, SQLAlchemy 2 + Flask-Migrate, Flask-Login, Flask-WTF (CSRF), bcrypt, Bootstrap 5, MySQL 8 (SQLite khi phát triển), Docker Compose.
+
+## Thành viên
+
+| Vai trò trong nhóm | Phụ trách | Họ tên |
+|---|---|---|
+| TV1 | Nền tảng, đăng nhập/phân quyền, layout chung, Docker, ghép nhánh | (điền) |
+| TV2 | Backend điểm danh, QR/PIN, cảnh báo vắng, đơn xin nghỉ | (điền) |
+| TV3 | Backend quản lý người dùng/lớp/buổi học, duyệt đơn, báo cáo | (điền) |
+| TV4 | Giao diện sinh viên (M01–M07) | (điền) |
+| TV5 | Giao diện giảng viên, quản trị (M08–M15) | (điền) |
+
+## Chạy bằng Docker (cách nhanh nhất)
+
+Cần cài sẵn Docker Desktop (hoặc Docker Engine + Compose v2). Không cần cài Python hay MySQL.
+
+```bash
+git clone https://github.com/nguyennhaty51/student-attendance.git
+cd student-attendance
+docker compose up --build
+```
+
+Đợi đến khi log hiện `Booting worker`, rồi mở <http://localhost:5000> và đăng nhập bằng một [tài khoản mẫu](#tài-khoản-mẫu-chỉ-dùng-khi-phát-triển).
+
+Lần khởi động đầu, container `web` tự làm theo thứ tự: chờ MySQL sẵn sàng → chạy migration (`flask db upgrade`, tạo 11 bảng) → nạp dữ liệu mẫu → chạy ứng dụng bằng gunicorn.
+
+Cấu hình (không bắt buộc): sao chép `.env.example` thành `.env` rồi sửa. Không có `.env` thì dùng giá trị mặc định.
+
+| Biến | Mặc định | Ý nghĩa |
+|---|---|---|
+| `SECRET_KEY` | `doi-gia-tri-nay-khi-trien-khai` | khóa ký phiên đăng nhập và CSRF; **đổi khi triển khai thật** |
+| `MYSQL_DATABASE`, `MYSQL_USER` | `attendance` | tên CSDL và người dùng MySQL |
+| `MYSQL_PASSWORD`, `MYSQL_ROOT_PASSWORD` | `attendance_pw`, `root_pw` | chỉ dùng chữ và số |
+| `WEB_PORT` | `5000` | cổng mở trên máy; bị trùng thì đổi, ví dụ `8080` |
+| `SEED_ON_START` | `1` | `1` nạp dữ liệu mẫu mỗi lần khởi động (chạy lại không bị trùng), `0` bỏ qua |
+
+Lệnh thường dùng:
+
+```bash
+docker compose up --build -d          # chạy nền
+docker compose logs -f web            # xem log ứng dụng
+docker compose down                   # dừng, GIỮ dữ liệu
+docker compose down -v                # dừng và XÓA dữ liệu (về trạng thái dữ liệu mẫu ban đầu)
+docker compose exec web python scripts/check_constraints.py   # kiểm tra ràng buộc CSDL
+```
+
+Sự cố thường gặp:
+- *`port is already allocated`*: cổng 5000 đang bị chiếm, đặt `WEB_PORT=8080` trong `.env`.
+- *Web báo lỗi kết nối CSDL ngay lần đầu*: MySQL khởi tạo mất 20–40 giây, script tự thử lại tối đa 15 lần; đợi thêm hoặc xem `docker compose logs db`.
+- *Đổi `MYSQL_PASSWORD` mà vẫn lỗi đăng nhập CSDL*: MySQL chỉ đọc mật khẩu lần tạo đầu, chạy `docker compose down -v` rồi `up` lại.
+- *Windows báo `exec ./docker/entrypoint.sh: no such file or directory`*: file bị đổi sang xuống dòng CRLF; `Dockerfile` đã tự sửa, nếu vẫn lỗi chạy `git config core.autocrlf false` rồi clone lại.
+
+## Chạy trực tiếp trên máy (để phát triển)
+
+```bash
+python -m venv .venv && source .venv/bin/activate     # Windows: .venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
+cp .env.example .env                                    # Windows: Copy-Item .env.example .env
+
+# SQLite (mặc định, file instance/attendance.sqlite3)
+python -m flask --app wsgi db upgrade
+python scripts/seed.py
+python scripts/check_constraints.py        # mọi dòng phải là "OK    bị từ chối"
+python -m flask --app wsgi run --debug     # http://127.0.0.1:5000
+
+# MySQL (đặt trong .env hoặc biến môi trường)
+# DATABASE_URL=mysql+pymysql://user:pass@localhost/attendance?charset=utf8mb4
+# pip install cryptography   # cần cho MySQL 8
+```
+
+Chạy kiểm thử: `python -m pytest`.
+
+Tạo migration mới khi sửa model (chỉ TV1 làm, rồi commit thư mục `migrations/`):
+
+```bash
+python -m flask --app wsgi db migrate -m "mô tả thay đổi"
+python -m flask --app wsgi db upgrade
+```
+
+## Cấu trúc thư mục
 
 ```
 app/
-  __init__.py        create_app, bật khóa ngoại cho SQLite, trang 403
-  extensions.py      db, migrate, login_manager, csrf
+  __init__.py        create_app, bật khóa ngoại cho SQLite, đăng ký blueprint, trang 403
+  extensions.py      db, migrate, login_manager, csrf, bcrypt
   errors.py          ServiceError + mã lỗi dùng chung
-  models/            lớp đối tượng + ánh xạ bảng (enums, user, academic, attendance, misc)
-  routes/            controller (auth.py: đăng nhập, đăng xuất, đổi mật khẩu)
-  services/          nghiệp vụ (auth_service.py)
+  models/            lớp đối tượng + ánh xạ bảng (enums, user, academic, attendance, misc, check_in_mixins)
+  repositories/      truy vấn dùng chung (attendance_repository.py)
+  services/          nghiệp vụ: auth, điểm danh (UC5, UC7), QR/PIN và check-in (UC6, UC3),
+                     cảnh báo vắng (UC15), đơn nghỉ (UC4, UC8), lớp/buổi học (UC12, UC13), người dùng (UC11), báo cáo (UC9, UC10)
+  routes/            controller (blueprint): auth, student_*, lecturer_*, admin, reports, notifications, tv3_3
   utils/decorators.py   role_required(...)
-  templates/         base.html, macros.html, auth/, errors/
-config.py            cấu hình ở thư mục gốc (DATABASE_URL, ngưỡng vắng 20%, PIN 6 số / 5 phút)
+  templates/         base.html, macros.html, auth/, student/, lecturer/, admin/, reports/, errors/
+  static/            css/style.css
+migrations/          Alembic (1 bản khởi tạo 11 bảng)
 scripts/
   seed.py            nạp dữ liệu mẫu (chạy lại được nhiều lần)
   seed_data.py       dữ liệu mẫu thuần Python
   check_constraints.py   thử chèn trùng/khóa ngoại sai: phải bị CSDL từ chối
-docs/api_contract.md hợp đồng frontend–backend (M01–M15, chữ ký service, mã lỗi)
-wsgi.py              điểm vào cho `flask --app wsgi`
-```
-## Cài đặt và chạy
-
-```bash
-python -m venv .venv && source .venv/bin/activate     # Windows: .venv\Scripts\Activate.ps1
-pip install -r requirements.txt
-
-# SQLite (mặc định, file instance/attendance.sqlite3)
-flask --app wsgi db upgrade
-python scripts/seed.py
-python scripts/check_constraints.py        # mọi dòng phải là "OK    bị từ chối"
-
-# MySQL
-export DATABASE_URL="mysql+pymysql://user:pass@localhost/attendance?charset=utf8mb4"
-flask --app wsgi db upgrade && python scripts/seed.py
+tests/               pytest (python -m pytest)
+docs/
+  api_contract.md    hợp đồng frontend–backend (M01–M15, chữ ký service, mã lỗi)
+  demo_script.md     kịch bản demo
+docker/entrypoint.sh      chờ CSDL → migration → seed → chạy ứng dụng
+Dockerfile, docker-compose.yml, .env.example
+config.py            cấu hình (DATABASE_URL, ngưỡng vắng 20%, PIN 6 số / 5 phút)
+wsgi.py              điểm vào cho gunicorn và `flask --app wsgi`
+CONTRIBUTING.md      quy tắc nhánh, commit, Pull Request
 ```
 
-**Lần đầu tạo migration** (chỉ TV1 làm, rồi commit thư mục `migrations/`):
+## Màn hình và đường dẫn
 
-```bash
-flask --app wsgi db init
-flask --app wsgi db migrate -m "initial schema"
-flask --app wsgi db upgrade
-```
-
-Kiểm tra file migration sinh ra trên cả SQLite và MySQL trước khi commit (cột ENUM, TINYINT, CHAR(6)).
+| Màn | Đường dẫn | Vai trò |
+|---|---|---|
+| M01 Đăng nhập | `/login` | Công khai |
+| M02 Đổi mật khẩu | `/change-password` | Mọi vai trò |
+| M03 Trang chủ sinh viên | `/student/home` | Sinh viên |
+| M04 Điểm danh bằng mã | `/student/check-in` | Sinh viên |
+| M05 Lịch sử điểm danh | `/student/history` | Sinh viên |
+| M06 Xin nghỉ | `/student/leave` | Sinh viên |
+| M07 Thông báo | `/student/notifications` | Sinh viên |
+| M08 Lớp giảng dạy | `/lecturer/classes` | Giảng viên |
+| M09 Điểm danh / Sửa điểm danh | `/lecturer/sessions/<id buổi>/attendance` | Giảng viên (đúng lớp) |
+| M10 Phiên QR/PIN | `/lecturer/sessions/<id buổi>/check-in` | Giảng viên (đúng lớp) |
+| M11 Duyệt đơn nghỉ | `/lecturer/leave` | Giảng viên |
+| M12 Báo cáo, xuất Excel/PDF | `/reports`, `/reports/export?format=xlsx\|pdf` | Giảng viên (lớp mình), Quản trị (tất cả) |
+| M13 Quản lý người dùng | `/admin/users` | Quản trị |
+| M14 Quản lý lớp học phần | `/admin/sections` | Quản trị |
+| M15 Quản lý buổi học | `/admin/sessions` | Quản trị |
 
 ## Cơ sở dữ liệu (Hình 6.1) – 11 bảng
 
@@ -63,6 +147,7 @@ Kiểm tra file migration sinh ra trên cả SQLite và MySQL trước khi commi
 | ENUM `role`, `status`, `method`, đơn nghỉ `status` | `users.role`, `attendances.status/method`, `attendance_logs.old_status/new_status`, `leave_requests.status` |
 
 Enum lưu tên viết hoa (`PRESENT`, `QR_PIN`...): MySQL dùng ENUM thật, SQLite dùng VARCHAR + CHECK.
+
 
 ## Ánh xạ sơ đồ lớp (Hình 5.1) ↔ Python ↔ use case
 
@@ -119,11 +204,27 @@ Dữ liệu mẫu: 3 môn (INT1001, INT1002, INT1003), 4 lớp học phần họ
 - 1 bản ghi sửa điểm danh (`attendance_logs`): `sv01`, buổi 5 của S1, ABSENT → LATE.
 - Buổi 7 của S1 đang mở mã điểm danh `123456` (gia hạn 1 ngày mỗi lần chạy seed) để thử check-in.
 
+
+## Rà soát yêu cầu phi chức năng
+
+| Yêu cầu | Cách đáp ứng | Nơi xem trong code |
+|---|---|---|
+| Mật khẩu lưu băm bcrypt (NFR7) | `bcrypt.hashpw` khi đặt mật khẩu, `bcrypt.checkpw` khi đăng nhập; không lưu mật khẩu thô | `app/models/user.py` (`set_password`, `check_password`) |
+| Phân quyền theo vai trò | decorator `role_required` trên các route; sai vai trò → 403, chưa đăng nhập → `/login` | `app/utils/decorators.py`, `app/routes/*` |
+| Chống giả mạo form (CSRF) | Flask-WTF bật cho mọi POST; form có `csrf_token` | `app/extensions.py`, các template |
+| Mã PIN 6 số, hết hạn sau 5 phút (BR5) | sinh bằng `secrets`, lưu `check_in_code` + `code_expiry`; quá hạn trả `EXPIRED` | `app/models/check_in_mixins.py`, `app/services/check_in_service.py` |
+| Chống dò mã PIN (NFR11) | nhập sai 5 lần liên tiếp thì khóa 5 phút | `app/services/check_in_service.py` (`CheckInThrottle`) |
+| Mỗi sinh viên điểm danh một lần mỗi buổi (BR1) | UNIQUE `(session_id, student_id)` + kiểm tra trước khi ghi | bảng `attendances`, `check_in_service.py` |
+| Lịch sử sửa điểm danh (BR6) | mỗi lần sửa ghi 1 dòng `attendance_logs` (trạng thái cũ, mới, lý do, người sửa); sửa phải kèm lý do | `app/services/uc7_edit_attendance.py` |
+| Cảnh báo vắng quá 20% (BR7) | so với `ABSENCE_THRESHOLD`; hàng vượt ngưỡng tô đỏ, tạo thông báo cho sinh viên | `app/services/uc15_warning.py`, `report_service.py` |
+| Giao diện co giãn | Bootstrap 5 + thẻ `viewport`, menu trái thu gọn trên điện thoại | `app/templates/base.html` |
+
 ## Quy tắc làm việc
 
-- Làm trên nhánh tách từ `develop`, mở Pull Request vào `develop`; mỗi nhóm việc nhỏ một PR (`feature/t1-models`, `feature/t1-migrations`, `feature/t1-seed`, `docs/api-contract`). PR cuối của Issue ghi `Closes #<số Issue>`.
+- Làm trên nhánh tách từ `develop` (luôn `git checkout develop && git pull` trước khi tạo nhánh), mở Pull Request vào `develop`; mỗi nhóm việc nhỏ một PR. PR cuối của Issue ghi `Closes #<số Issue>`. Chi tiết nhánh, commit, PR: xem `CONTRIBUTING.md`.
 - Chỉ sửa file thuộc phần của mình; cần đổi file dùng chung (`app/models/*`, `app/errors.py`, `docs/api_contract.md`) thì báo TV1 / mở PR cho TV1.
 - Kiểm thử làm sau khi hoàn thành chức năng, theo Testing Document Template của thầy.
+
 ## Dùng layout chung (TV4, TV5)
 
 Mọi trang con kế thừa `app/templates/base.html` (thanh trên: tên hệ thống, tên người dùng, đổi mật khẩu, đăng xuất; menu trái theo vai trò đúng Mục 7.2; vùng thông báo; Bootstrap 5 co giãn theo màn hình). **Không sửa `base.html`**; cần đổi thì báo TV1.
