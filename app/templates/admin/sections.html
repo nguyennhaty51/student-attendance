@@ -1,5 +1,5 @@
 {% extends "base.html" %}{% block title %}Quản lý lớp học phần{% endblock %}{% block content %}
-<div class="container-fluid"><h3>M14 – Quản lý lớp học phần</h3>
+<div class="container-fluid"><h3>Quản lý lớp học phần</h3>
 <div class="card mb-3"><div class="card-header">Tạo lớp học phần</div><div class="card-body"><form method="post" action="{{url_for('admin.section_create')}}" class="row g-2">
 <input type="hidden" name="csrf_token" value="{{csrf_token()}}"><div class="col-md-3"><select required class="form-select" name="course_id"><option value="">Môn học</option>{% for c in courses %}<option value="{{c.id}}">{{c.code}} - {{c.name}}</option>{% endfor %}</select></div>
 <div class="col-md-2"><input required class="form-control" name="semester" placeholder="Học kỳ"></div><div class="col-md-2"><input class="form-control" name="room" placeholder="Phòng"></div>
