@@ -1,15 +1,11 @@
-"""User (trừu tượng), Student, Lecturer, Admin – Hình 5.1; bảng users, students, lecturers – Hình 6.1.
-
-Kế thừa: `users` chứa trường chung + cột `role`; `students` và `lecturers` là bảng riêng với
-khóa chính `user_id` (cũng là khóa ngoại tới users.id). Admin dùng chung bảng `users`.
-"""
 import bcrypt
+from flask_login import UserMixin
 
-from app.extensions import db
+from app.extensions import db, login_manager
 from .enums import Role, enum_col
 
 
-class User(db.Model):
+class User(UserMixin, db.Model):
     """Lớp trừu tượng: không tạo trực tiếp, chỉ tạo Student / Lecturer / Admin."""
 
     __tablename__ = "users"
@@ -46,14 +42,17 @@ class User(db.Model):
 
     # ----- phương thức trong sơ đồ: login(), logout(), changePassword() -----
     def login(self, password: str) -> bool:
-        """Đúng mật khẩu và tài khoản chưa bị khóa. Việc tạo phiên đăng nhập do AuthService (TV2) làm."""
+        """Đúng mật khẩu và tài khoản chưa bị khóa. Việc tạo phiên đăng nhập do AuthService làm."""
         return bool(self.is_active and self.check_password(password))
 
     def logout(self) -> None:
-        raise NotImplementedError("TODO TV2: AuthService.logout")
+        from app.services.auth_service import AuthService
+        AuthService.logout()
 
     def change_password(self, old_password: str, new_password: str) -> bool:
-        raise NotImplementedError("TODO TV2: AuthService.change_password")
+        from app.services.auth_service import AuthService
+        ok, _ = AuthService.change_password(self, old_password, new_password)
+        return ok
 
     def __repr__(self):
         return f"<{type(self).__name__} {self.username}>"
@@ -76,17 +75,19 @@ class Student(User):
         """UC2."""
         raise NotImplementedError("TODO TV2: AttendanceService.history_for_student")
 
+    
     def check_in(self, code: str):
-        """UC3 – điểm danh bằng mã (checkIn(code))."""
-        raise NotImplementedError("TODO TV2: AttendanceService.check_in")
+        from app.services.check_in_service import check_in_service
+        return check_in_service.check_in(self, code)
+
 
     def submit_leave_request(self, session_id: int, reason: str):
-        """UC4."""
-        raise NotImplementedError("TODO TV3: LeaveService.submit")
-
+        from app.services.leave_service import LeaveService
+        return LeaveService.submit(self.id, session_id, reason)
+    
     def view_notifications(self, unread_only: bool = False):
-        """UC15."""
-        raise NotImplementedError("TODO TV3: NotificationService.list_for_user")
+        from app.services.notification_service import NotificationService
+        return NotificationService.list_for_user(self.id, unread_only=unread_only)
 
 
 class Lecturer(User):
@@ -106,17 +107,30 @@ class Lecturer(User):
         """UC16."""
         raise NotImplementedError("TODO TV3: ClassService.teaching_classes")
 
+    def get_attendance_sheet(self, session_id: int) -> dict:
+        """UC5 – lấy danh sách điểm danh của buổi học."""
+        from app.services.attendance_service import AttendanceService
+        return AttendanceService.get_attendance_sheet(self.id, session_id)
+    
     def take_attendance(self, session_id: int, records: dict):
         """UC5. records: {student_id: (AttendanceStatus, note)}."""
-        raise NotImplementedError("TODO TV2: AttendanceService.take_attendance")
+        from app.services.attendance_service import AttendanceService
+        return AttendanceService.take_attendance(self.id, session_id, records)
+    
+    def open_check_in_session(self, session_id: int, minutes: int = 5, qr_payload_factory=None):
+        """Mở phiên điểm danh thông qua QR session service."""
+        from app.services.qr_session_service import qr_session_service
+        return qr_session_service.open_session(self, session_id, minutes, qr_payload_factory)
 
-    def open_check_in_session(self, session_id: int, minutes: int = 5):
-        """UC6."""
-        raise NotImplementedError("TODO TV2: AttendanceService.open_check_in_session")
+    def close_check_in_session(self, session_id: int):
+        """Đóng phiên điểm danh thông qua QR session service."""
+        from app.services.qr_session_service import qr_session_service
+        return qr_session_service.close_session(self, session_id)
 
     def edit_attendance(self, attendance_id: int, new_status, reason: str):
         """UC7 – ghi AttendanceLog (BR6)."""
-        raise NotImplementedError("TODO TV2: AttendanceService.edit_attendance")
+        from app.services.attendance_service import AttendanceService
+        return AttendanceService.edit_attendance(self.id, attendance_id, new_status, reason)
 
     def review_leave(self, leave_id: int, approve: bool):
         """UC8."""
@@ -147,3 +161,8 @@ class Admin(User):
     def view_report(self, **filters):
         """UC9 (toàn hệ thống)."""
         raise NotImplementedError("TODO TV3: ReportService.generate")
+
+
+@login_manager.user_loader
+def load_user(user_id):
+    return db.session.get(User, int(user_id))

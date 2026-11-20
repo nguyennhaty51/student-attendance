@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% block title %}Lịch sử điểm danh - Hệ thống Điểm danh{% endblock %}
+
+{% block extra_css %}
+<style>
+  .select-square-m05 {
+    border-radius: 2px;
+    border: 1px solid #9ca3af;
+  }
+  .table-custom {
+    border-color: #cbd5e1;
+  }
+  .table-custom th {
+    background-color: #e5e7eb;
+    color: #1f2937;
+    font-weight: 700;
+    border-bottom: 1px solid #cbd5e1;
+    padding: 10px 14px;
+  }
+  .table-custom td {
+    padding: 10px 14px;
+  }
+  .status-pill {
+    display: inline-block;
+    min-width: 118px;
+    padding: 5px 16px;
+    border-radius: 999px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    text-align: center;
+  }
+  .pill-present { background-color: #2e8540; color: #ffffff; }
+  .pill-late { background-color: #e59400; color: #ffffff; }
+  .pill-absent { background-color: #d62828; color: #ffffff; }
+  .pill-excused { background-color: #1d70b8; color: #ffffff; }
+</style>
+{% endblock %}
+
+{% block content %}
+{% set mock_courses = [
+  {"section_id": 1, "label": "INT1234 - Công nghệ phần mềm (Nhóm 01)"},
+  {"section_id": 2, "label": "INT2201 - Cơ sở dữ liệu (Nhóm 02)"},
+  {"section_id": 3, "label": "MAT1101 - Giải tích 1 (Nhóm 03 - Trống)"}
+] %}
+{% set course_options = courses if courses is defined else mock_courses %}
+{% set current_section_id = (selected_section_id | int) if (selected_section_id is defined and selected_section_id) else (request.args.get('section_id', 1) | int) %}
+
+{% set mock_rows_map = {
+  1: [
+    {"session_id": 101, "session_date": "20/10/2026", "start_time": "07:30", "end_time": "09:00", "status": "PRESENT", "note": ""},
+    {"session_id": 102, "session_date": "22/10/2026", "start_time": "07:30", "end_time": "09:00", "status": "LATE", "note": "Đến lúc 07:50"},
+    {"session_id": 103, "session_date": "27/10/2026", "start_time": "07:30", "end_time": "09:00", "status": "ABSENT", "note": ""},
+    {"session_id": 104, "session_date": "29/10/2026", "start_time": "07:30", "end_time": "09:00", "status": "EXCUSED", "note": "Đơn xin nghỉ đã duyệt"}
+  ],
+  2: [
+    {"session_id": 201, "session_date": "21/10/2026", "start_time": "13:00", "end_time": "15:00", "status": "PRESENT", "note": ""}
+  ],
+  3: []
+} %}
+
+{% set mock_summary_map = {
+  1: {"present": 9, "absent": 3, "late": 1, "excused": 1, "attendance_rate": 0.85},
+  2: {"present": 1, "absent": 0, "late": 0, "excused": 0, "attendance_rate": 1.0},
+  3: {"present": 0, "absent": 0, "late": 0, "excused": 0, "attendance_rate": 0.0}
+} %}
+
+{% set history_rows = rows if rows is defined else mock_rows_map.get(current_section_id, []) %}
+{% set stat = summary if summary is defined else mock_summary_map.get(current_section_id, {"present": 0, "absent": 0, "late": 0, "excused": 0, "attendance_rate": 0.0}) %}
+
+<div class="row">
+  <div class="col-12 col-xl-10">
+    <h4 class="fw-bold text-dark mb-3">Lịch sử điểm danh</h4>
+
+    <!-- Dropdown chọn môn học vuông góc -->
+    <form method="GET" action="/student/history" class="mb-3" style="max-width: 400px;">
+      <label for="sectionSelect" class="form-label small fw-semibold text-secondary mb-1">Môn học</label>
+      <select id="sectionSelect" name="section_id" class="form-select select-square-m05" onchange="this.form.submit()">
+        {% for item in course_options %}
+        <option value="{{ item.section_id }}" {{ 'selected' if (item.section_id | int) == current_section_id else '' }}>
+          {{ item.label }}
+        </option>
+        {% endfor %}
+      </select>
+    </form>
+
+    <!-- Bảng lịch sử từng buổi vuông góc, cột Trạng thái căn trái -->
+    <div class="table-responsive bg-white border mb-3">
+      <table class="table table-bordered table-hover align-middle mb-0 table-custom">
+        <thead>
+          <tr>
+            <th style="width: 18%;">Ngày</th>
+            <th style="width: 20%;">Giờ</th>
+            <th style="width: 22%;">Trạng thái</th>
+            <th>Ghi chú</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in history_rows %}
+          <tr>
+            <td>{{ r.session_date }}</td>
+            <td>{{ r.start_time }}{% if r.end_time %}–{{ r.end_time }}{% endif %}</td>
+            <td>
+              {% if r.status == 'PRESENT' %}
+                <span class="status-pill pill-present">Có mặt</span>
+              {% elif r.status == 'LATE' %}
+                <span class="status-pill pill-late">Muộn</span>
+              {% elif r.status == 'ABSENT' %}
+                <span class="status-pill pill-absent">Vắng</span>
+              {% elif r.status == 'EXCUSED' %}
+                <span class="status-pill pill-excused">Có phép</span>
+              {% else %}
+                <span class="badge bg-secondary">{{ r.status }}</span>
+              {% endif %}
+            </td>
+            <td class="text-dark">{{ r.note or '' }}</td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="4" class="text-center text-muted py-4">
+              Chưa có buổi điểm danh nào cho môn học này.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Dòng tổng hợp đồng màu đen giống Wireframe M05 -->
+    <div class="d-flex flex-wrap gap-3 align-items-center fw-bold text-dark">
+      <span>Có mặt {{ stat.present }}</span>
+      <span>Vắng {{ stat.absent }}</span>
+      <span>Muộn {{ stat.late }}</span>
+      <span>Có phép {{ stat.excused }}</span>
+      <span>Tỷ lệ chuyên cần {{ (stat.attendance_rate * 100) | round(0) | int }}%</span>
+    </div>
+  </div>
+</div>
+{% endblock %}

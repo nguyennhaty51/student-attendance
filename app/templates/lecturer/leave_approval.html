@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% from "macros.html" import status_badge %}
+
+{% block title %}Duyệt đơn xin nghỉ{% endblock %}
+
+{% block content %}
+
+<div class="mb-3">
+    <h3>Duyệt đơn xin nghỉ</h3>
+    <p class="text-muted">Xem và xử lý đơn xin nghỉ của sinh viên.</p>
+</div>
+
+<form method="GET" class="row g-2 mb-3">
+    <div class="col-md-3">
+        <label class="form-label">Trạng thái đơn</label>
+        <select class="form-select" name="status">
+            {% for value, label in [("PENDING", "Chờ duyệt"), ("APPROVED", "Đã duyệt"), ("REJECTED", "Từ chối")] %}
+            <option value="{{ value }}" {% if selected_status == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="col-auto align-self-end">
+        <button class="btn btn-primary">Lọc</button>
+    </div>
+</form>
+
+<div class="card shadow-sm">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>Sinh viên</th>
+                    <th>Lớp</th>
+                    <th>Buổi học</th>
+                    <th>Lý do</th>
+                    <th>Ngày gửi</th>
+                    <th>Trạng thái</th>
+                    <th>Thao tác</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in leave_requests %}
+                <tr>
+                    <td>
+                        <strong>{{ item.student.student_code }}</strong><br>
+                        {{ item.student.full_name }}
+                    </td>
+                    <td>
+                        {{ item.session.section.course.code }}<br>
+                        Lớp học phần {{ item.session.section.id }}
+                    </td>
+                    <td>
+                        {{ item.session.session_date.strftime("%d/%m/%Y") }}<br>
+                        {{ item.session.start_time.strftime("%H:%M") }} - {{ item.session.end_time.strftime("%H:%M") }}
+                    </td>
+                    <td>{{ item.reason }}</td>
+                    <td>{{ item.created_at.strftime("%d/%m/%Y %H:%M") }}</td>
+                    <td>{{ status_badge(item.status) }}</td>
+                    <td>
+                        {% if item.status.value == "PENDING" %}
+                        <div class="d-flex gap-1">
+                            <form method="POST" action="{{ url_for('tv3_3.review_leave', leave_id=item.id, action='approve') }}">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button class="btn btn-sm btn-success" onclick="return confirm('Duyệt đơn xin nghỉ này?')">Duyệt</button>
+                            </form>
+                            <form method="POST" action="{{ url_for('tv3_3.review_leave', leave_id=item.id, action='reject') }}">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button class="btn btn-sm btn-danger" onclick="return confirm('Từ chối đơn xin nghỉ này?')">Từ chối</button>
+                            </form>
+                        </div>
+                        {% else %}
+                        <span class="text-muted">Đã xử lý</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="7" class="text-center text-muted py-4">Không có đơn xin nghỉ nào.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% endblock %}

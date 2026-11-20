@@ -1,4 +1,5 @@
-/* File CSS dùng chung: chỉ TV1 sửa trực tiếp, người khác gửi Pull Request nhỏ. */
-body { font-family: Arial, sans-serif; margin: 0; }
-.topbar { background: #2f4b6e; color: #fff; padding: 12px 16px; font-weight: bold; }
-main { padding: 16px; }
+/* CSS dùng chung (Bootstrap lo phần lớn giao diện). Chỉ TV1 sửa trực tiếp, người khác gửi Pull Request nhỏ. */
+.sidebar { min-height: calc(100vh - 56px); }
+.sidebar .nav-link:hover { background: #e9ecef; border-radius: .375rem; }
+/* Hàng vượt ngưỡng vắng được tô đỏ (Mục 7.2): thêm class "row-over-threshold" vào <tr> */
+.row-over-threshold { --bs-table-bg: #f8d7da; }

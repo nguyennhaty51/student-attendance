@@ -1,0 +1,15 @@
+.git
+.github
+.venv
+venv
+.vs
+.vscode
+.idea
+.pytest_cache
+__pycache__
+*.pyc
+.env
+*.sqlite3
+instance
+*.zip
+docs/issues-pack

@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+{% block title %}Điểm danh bằng mã - Hệ thống Điểm danh{% endblock %}
+
+{% block extra_css %}
+<style>
+  .m04-wrapper {
+    max-width: 440px;
+    margin: 0 auto;
+    background-color: #ffffff;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    padding: 24px 20px;
+  }
+  .pin-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 10px;
+  }
+  .pin-box {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    max-height: 56px;
+    text-align: center;
+    font-size: 1.5rem;
+    font-weight: 700;
+    border: 1.5px solid #9ca3af;
+    border-radius: 4px;
+    color: #111827;
+    background-color: #f9fafb;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+  .pin-box:focus {
+    outline: none;
+    border-color: #1d63b8;
+    background-color: #ffffff;
+    box-shadow: 0 0 0 3px rgba(29, 99, 184, 0.15);
+  }
+  .btn-checkin-submit {
+    background-color: #1d63b8;
+    border-color: #1d63b8;
+    color: #ffffff;
+    font-weight: 600;
+    border-radius: 4px;
+  }
+  .btn-checkin-submit:hover {
+    background-color: #164e96;
+    border-color: #164e96;
+    color: #ffffff;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+{% set prefill_code = (code | string) if (code is defined and code) else '' %}
+
+<div class="py-2 py-md-4">
+  <div class="m04-wrapper shadow-sm">
+    <h4 class="fw-bold text-dark text-center mb-2">Điểm danh bằng mã</h4>
+    <p class="text-muted small text-center mb-4">
+      Nhập mã PIN 6 chữ số do giảng viên cung cấp hoặc quét mã QR trên lớp.
+    </p>
+
+    {# ===== Hiển thị thông báo kết quả từ Backend (student_check_in_routes.py) ===== #}
+    {% if result is defined and result %}
+      {% if result == 'SUCCESS' %}
+        <div id="checkInAlert" class="alert alert-success py-2 px-3 small fw-medium mb-3" role="alert">
+          <i class="bi bi-check-circle-fill me-1"></i> {{ message or 'Điểm danh thành công.' }}
+        </div>
+      {% else %}
+        <div id="checkInAlert" class="alert alert-danger py-2 px-3 small fw-medium mb-3" role="alert">
+          <i class="bi bi-exclamation-triangle-fill me-1"></i> {{ message or 'Mã điểm danh không hợp lệ.' }}
+        </div>
+      {% endif %}
+    {% else %}
+      <div id="checkInAlert" class="alert alert-danger py-2 px-3 small fw-medium d-none mb-3" role="alert"></div>
+    {% endif %}
+
+    <form id="checkInForm" method="POST" action="/student/check-in" novalidate>
+      {% if csrf_token is defined %}
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      {% endif %}
+      <input type="hidden" id="fullPinCode" name="code" value="{{ prefill_code }}">
+
+      <div class="mb-4">
+        <label class="form-label small fw-semibold text-secondary d-block text-center mb-2">
+          Mã điểm danh (6 chữ số)
+        </label>
+        <div class="pin-grid" id="pinGrid">
+          {% for i in range(6) %}
+          <input
+            type="text"
+            inputmode="numeric"
+            pattern="[0-9]*"
+            maxlength="1"
+            class="pin-box"
+            aria-label="Chữ số thứ {{ i + 1 }}"
+            value="{{ prefill_code[i] if prefill_code|length > i else '' }}"
+            autocomplete="off"
+          >
+          {% endfor %}
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-checkin-submit w-100 py-2">
+        Xác nhận điểm danh
+      </button>
+    </form>
+
+    <div class="text-center mt-3">
+      <a href="/student/home" class="text-decoration-none small text-secondary">
+        <i class="bi bi-arrow-left me-1"></i>Quay lại trang chủ
+      </a>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const boxes = Array.from(document.querySelectorAll('.pin-box'));
+    const hiddenInput = document.getElementById('fullPinCode');
+    const form = document.getElementById('checkInForm');
+    const alertBox = document.getElementById('checkInAlert');
+
+    function syncHiddenCode() {
+      hiddenInput.value = boxes.map(b => b.value.trim()).join('');
+    }
+
+    function showClientError(msg) {
+      alertBox.className = 'alert alert-danger py-2 px-3 small fw-medium mb-3';
+      alertBox.innerHTML = `<i class="bi bi-exclamation-triangle-fill me-1"></i> ${msg}`;
+    }
+
+    boxes.forEach((box, idx) => {
+      box.addEventListener('input', function (e) {
+        const digit = this.value.replace(/\D/g, '').slice(0, 1);
+        this.value = digit;
+        syncHiddenCode();
+        if (digit && idx < boxes.length - 1) {
+          boxes[idx + 1].focus();
+        }
+      });
+
+      box.addEventListener('keydown', function (e) {
+        if (e.key === 'Backspace' && !this.value && idx > 0) {
+          boxes[idx - 1].focus();
+          boxes[idx - 1].value = '';
+          syncHiddenCode();
+        }
+      });
+
+      box.addEventListener('paste', function (e) {
+        e.preventDefault();
+        const pasted = (e.clipboardData || window.clipboardData)
+          .getData('text')
+          .replace(/\D/g, '')
+          .slice(0, 6);
+        if (!pasted) return;
+        pasted.split('').forEach((ch, i) => {
+          if (boxes[i]) boxes[i].value = ch;
+        });
+        syncHiddenCode();
+        const nextIdx = Math.min(pasted.length, boxes.length - 1);
+        boxes[nextIdx].focus();
+      });
+    });
+
+    if (boxes[0] && !boxes[0].value) {
+      boxes[0].focus();
+    }
+
+    form.addEventListener('submit', function (e) {
+      syncHiddenCode();
+      if (hiddenInput.value.length !== 6) {
+        e.preventDefault();
+        showClientError('Vui lòng nhập đầy đủ 6 chữ số của mã điểm danh.');
+        const emptyBox = boxes.find(b => !b.value) || boxes[0];
+        emptyBox.focus();
+      }
+    });
+  });
+</script>
+{% endblock %}

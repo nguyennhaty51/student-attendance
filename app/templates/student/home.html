@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+{% block title %}Trang chủ sinh viên - Hệ thống Điểm danh{% endblock %}
+
+{% block extra_css %}
+<style>
+  .warning-banner-custom {
+    background-color: #fde8e8;
+    border: 1px solid #f05252;
+    color: #9b1c1c;
+    border-radius: 6px;
+  }
+  .table-custom th {
+    background-color: #e5e7eb;
+    color: #1f2937;
+    font-weight: 600;
+    border-bottom: 1px solid #d1d5db;
+  }
+  .row-over-threshold {
+    background-color: #fde8e8 !important;
+  }
+  .row-over-threshold td {
+    background-color: #fde8e8 !important;
+    color: #9b1c1c;
+  }
+  .btn-checkin-custom {
+    background-color: #1d63b8;
+    border-color: #1d63b8;
+    min-width: 170px;
+  }
+  .btn-checkin-custom:hover {
+    background-color: #164e96;
+    border-color: #164e96;
+  }
+  .btn-history-custom {
+    min-width: 170px;
+    background-color: #ffffff;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+{% set current_threshold = threshold if threshold is defined else 0.2 %}
+{% set mock_courses = [
+  {
+    "section_id": 1,
+    "course_code": "INT1234",
+    "course_name": "Công nghệ phần mềm",
+    "section_label": "Nhóm 01",
+    "lecturer_name": "B. Tran",
+    "held": 12,
+    "present": 9,
+    "absent": 3,
+    "late": 0,
+    "excused": 0,
+    "attendance_rate": 0.75,
+    "absence_rate": 0.25,
+    "over_threshold": true
+  },
+  {
+    "section_id": 2,
+    "course_code": "INT2201",
+    "course_name": "Cơ sở dữ liệu",
+    "section_label": "Nhóm 02",
+    "lecturer_name": "C. Le",
+    "held": 10,
+    "present": 10,
+    "absent": 0,
+    "late": 0,
+    "excused": 0,
+    "attendance_rate": 1.0,
+    "absence_rate": 0.0,
+    "over_threshold": false
+  },
+  {
+    "section_id": 3,
+    "course_code": "MAT1101",
+    "course_name": "Giải tích 1",
+    "section_label": "Nhóm 03",
+    "lecturer_name": "D. Pham",
+    "held": 11,
+    "present": 10,
+    "absent": 1,
+    "late": 0,
+    "excused": 0,
+    "attendance_rate": 0.91,
+    "absence_rate": 0.09,
+    "over_threshold": false
+  }
+] %}
+{% set course_list = courses if courses is defined else mock_courses %}
+{% set warn_count = unread_warnings if unread_warnings is defined else 1 %}
+
+<div class="row">
+  <div class="col-12">
+    <h4 class="mb-3 fw-bold text-dark">Môn học của tôi</h4>
+
+    {% set over_courses = course_list | selectattr("over_threshold") | list %}
+    {% if over_courses | length > 0 %}
+      {% for c in over_courses %}
+      <div class="alert warning-banner-custom py-2 px-3 mb-3 fw-medium" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+        Cảnh báo: tỷ lệ vắng môn <strong>{{ c.course_code }}</strong> là
+        <strong>{{ (c.absence_rate * 100) | round(0) | int }}%</strong>
+        (ngưỡng cho phép {{ (current_threshold * 100) | round(0) | int }}%)
+      </div>
+      {% endfor %}
+    {% endif %}
+
+    <div class="table-responsive bg-white rounded border shadow-sm mb-4">
+      <table class="table table-bordered table-hover align-middle mb-0 table-custom">
+        <thead>
+          <tr>
+            <th>Môn học</th>
+            <th>Lớp</th>
+            <th>Giảng viên</th>
+            <th class="text-center">Đã học</th>
+            <th class="text-center">Có mặt</th>
+            <th class="text-center">Vắng</th>
+            <th class="text-center">Tỷ lệ chuyên cần</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for c in course_list %}
+          <tr class="{% if c.over_threshold %}row-over-threshold fw-medium{% endif %}">
+            <td>
+              <span class="fw-semibold">{{ c.course_code }}</span>
+              {% if c.course_name %}<div class="small text-muted">{{ c.course_name }}</div>{% endif %}
+            </td>
+            <td>{{ c.section_label }}</td>
+            <td>{{ c.lecturer_name }}</td>
+            <td class="text-center">{{ c.held }}</td>
+            <td class="text-center">{{ c.present }}</td>
+            <td class="text-center">{{ c.absent }}</td>
+            <td class="text-center">
+              {{ (c.attendance_rate * 100) | round(0) | int }}%
+              {% if c.over_threshold %}
+                <span class="badge bg-danger ms-1">Vắng {{ (c.absence_rate * 100) | round(0) | int }}%</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="7" class="text-center text-muted py-4">Chưa có dữ liệu môn học trong học kỳ này.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="d-flex flex-wrap gap-3">
+      <a href="/student/check-in" class="btn btn-primary btn-checkin-custom py-2 fw-medium">
+        <i class="bi bi-qr-code-scan me-1"></i> Điểm danh bằng mã
+      </a>
+      <a href="/student/history" class="btn btn-outline-secondary btn-history-custom py-2 fw-medium">
+        <i class="bi bi-clock-history me-1"></i> Xem lịch sử
+      </a>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const unreadCount = {{ warn_count }};
+    if (unreadCount > 0) {
+      const notifLink = document.querySelector('#sidebarMenu a[href="/student/notifications"]');
+      if (notifLink && !notifLink.querySelector('.badge')) {
+        const badge = document.createElement('span');
+        badge.className = 'badge bg-danger rounded-pill ms-2';
+        badge.textContent = unreadCount;
+        notifLink.appendChild(badge);
+      }
+    }
+  });
+</script>
+{% endblock %}

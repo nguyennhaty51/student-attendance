@@ -1,0 +1,67 @@
+
+{% extends "base.html" %}
+
+{% block title %}Lớp giảng dạy{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2>Lớp giảng dạy</h2>
+            <p class="text-muted">Danh sách các lớp học phần bạn phụ trách</p>
+        </div>
+    </div>
+
+    {% if classes %}
+        <div class="row g-3">
+            {% for section in classes %}
+                <div class="col-md-6 col-lg-4">
+                    <div class="card h-100 shadow-sm">
+                        <div class="card-body">
+                            <h5 class="card-title">
+                                {{ section.course.name if section.course else "Chưa có tên môn học" }}
+                            </h5>
+
+                            <p class="mb-2">
+                                <strong>Mã môn:</strong>
+                                {{ section.course.code if section.course else "—" }}
+                            </p>
+
+                            <p class="mb-2">
+                                <strong>Học kỳ:</strong>
+                                {{ section.semester or "—" }}
+                            </p>
+
+                            <p class="mb-3">
+                                <strong>Phòng học:</strong>
+                                {{ section.room or "—" }}
+                            </p>
+
+                           {% if section.sessions %}
+    <a
+        href="{{ url_for('attendance.session_attendance', session_id=section.sessions[0].id) }}"
+        class="btn btn-primary btn-sm"
+    >
+        Điểm danh
+    </a>
+    <a
+        href="{{ url_for('lecturer_check_in.view', session_id=section.sessions[0].id) }}"
+        class="btn btn-success btn-sm ms-2"
+    >
+        Mở điểm danh QR/PIN
+    </a>
+{% else %}
+    <span class="text-muted small">Chưa có buổi học</span>
+{% endif %}
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="alert alert-info">
+            Hiện tại bạn chưa được phân công lớp học phần nào.
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
