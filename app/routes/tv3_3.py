@@ -102,14 +102,14 @@ def review_leave(leave_id, action):
         if action == "approve":
 
             flash(
-                "Leave request approved.",
+                "Đã duyệt đơn xin nghỉ.",
                 "success"
             )
 
         else:
 
             flash(
-                "Leave request rejected.",
+                "Đã từ chối đơn xin nghỉ.",
                 "success"
             )
 
@@ -183,7 +183,7 @@ def reports():
             handle_service_error(exc)
         else:
             flash(
-                "Invalid report filter.",
+                "Bộ lọc báo cáo không hợp lệ.",
                 "danger"
             )
 

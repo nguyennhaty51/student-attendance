@@ -1,6 +1,6 @@
 {% extends "base.html" %}{% block title %}Quản lý người dùng{% endblock %}
 {% block content %}
-<div class="container-fluid"><h3 class="mb-3">M13 – Quản lý người dùng</h3>
+<div class="container-fluid"><h3 class="mb-3">Quản lý người dùng</h3>
 <div class="card mb-3"><div class="card-body">
 <form method="get" class="row g-2"><div class="col-md-5"><input class="form-control" name="q" value="{{ q }}" placeholder="Tìm username, họ tên, email"></div>
 <div class="col-md-3"><select class="form-select" name="role"><option value="">Tất cả vai trò</option>{% for r in ['STUDENT','LECTURER','ADMIN'] %}<option value="{{r}}" {% if role_filter==r %}selected{% endif %}>{{r}}</option>{% endfor %}</select></div>
@@ -8,8 +8,8 @@
 <div class="card mb-3"><div class="card-header">Thêm tài khoản (mật khẩu tạm sẽ hiển thị một lần sau khi tạo)</div><div class="card-body">
 <form method="post" action="{{url_for('admin.user_create')}}" class="row g-2">
 <input type="hidden" name="csrf_token" value="{{csrf_token()}}">
-<div class="col-md-2"><select class="form-select" name="role"><option>STUDENT</option><option>LECTURER</option></select></div>
-<div class="col-md-2"><input required class="form-control" name="username" placeholder="Username"></div><div class="col-md-2"><input required class="form-control" name="full_name" placeholder="Họ tên"></div>
+<div class="col-md-2"><select class="form-select" name="role"><option>Sinh viên</option><option>Giảng viên</option></select></div>
+<div class="col-md-2"><input required class="form-control" name="username" placeholder="Tên đăng nhập"></div><div class="col-md-2"><input required class="form-control" name="full_name" placeholder="Họ tên"></div>
 <div class="col-md-2"><input required type="email" class="form-control" name="email" placeholder="Email"></div><div class="col-md-2"><input required class="form-control" name="code" placeholder="Mã SV/GV"></div>
 <div class="col-md-2"><input class="form-control" name="class_name" placeholder="Lớp SV (nếu có)"></div><div class="col-md-2"><input class="form-control" name="department" placeholder="Khoa GV (nếu có)"></div>
 <div class="col-auto"><button class="btn btn-primary">Tạo tài khoản</button></div></form></div></div>
